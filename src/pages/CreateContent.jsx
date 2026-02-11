@@ -14,14 +14,17 @@ import {
   CheckCircle,
   TrendingUp,
   Edit3,
-  Send
+  Send,
+  FileText
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
 
 export default function CreateContent() {
   const [activeTab, setActiveTab] = useState('idea');
   const [ideaInput, setIdeaInput] = useState('');
   const [urlInput, setUrlInput] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [generatedContent, setGeneratedContent] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
@@ -38,12 +41,24 @@ export default function CreateContent() {
     },
   });
 
+  const { data: templates = [] } = useQuery({
+    queryKey: ['templates'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      return await base44.entities.Template.filter({ created_by: user.email }, '-created_date');
+    },
+  });
+
   const generateMutation = useMutation({
-    mutationFn: async ({ type, input }) => {
+    mutationFn: async ({ type, input, template }) => {
+      const templateContext = template 
+        ? `\n\nاستخدم هذا القالب كأساس للمحتوى:\n${template.template_content}\n\nوطوّره بناءً على الفكرة الجديدة.`
+        : '';
+
       const prompt = type === 'idea' 
         ? `أنت خبير تسويق سعودي متخصص في كتابة محتوى إعلاني قوي باللهجة السعودية. 
 
-المطلوب: اكتب محتوى إعلاني احترافي جذاب بناءً على الفكرة التالية: "${input}"
+المطلوب: اكتب محتوى إعلاني احترافي جذاب بناءً على الفكرة التالية: "${input}"${templateContext}
 
 المتطلبات:
 1. استخدم اللهجة السعودية الطبيعية (مثل: وايد، كثير، زين، ممتاز، روعة، خيال)
@@ -158,7 +173,26 @@ export default function CreateContent() {
       }
     }
 
-    generateMutation.mutate({ type: activeTab, input });
+    const template = selectedTemplate ? templates.find(t => t.id === selectedTemplate) : null;
+    
+    // Update template usage count
+    if (template) {
+      base44.entities.Template.update(template.id, {
+        usage_count: (template.usage_count || 0) + 1
+      });
+    }
+
+    generateMutation.mutate({ type: activeTab, input, template });
+  };
+
+  const handleTemplateSelect = (templateId) => {
+    setSelectedTemplate(templateId);
+    if (templateId) {
+      const template = templates.find(t => t.id === templateId);
+      if (template && activeTab === 'idea') {
+        setIdeaInput(template.template_content);
+      }
+    }
   };
 
   const canUseTrends = subscription && (subscription.has_trend_analysis || subscription.plan_type === 'premium');
@@ -189,6 +223,42 @@ export default function CreateContent() {
             </TabsList>
 
             <TabsContent value="idea" className="space-y-4">
+              {templates.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    استخدم قالب جاهز (اختياري)
+                  </label>
+                  <Select value={selectedTemplate || ''} onValueChange={handleTemplateSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر قالباً أو ابدأ من الصفر">
+                        {selectedTemplate ? (
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            {templates.find(t => t.id === selectedTemplate)?.template_name}
+                          </div>
+                        ) : (
+                          'اختر قالباً أو ابدأ من الصفر'
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>بدون قالب</SelectItem>
+                      {templates.map((template) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            {template.template_name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    سيتم استخدام القالب كأساس وتطويره بناءً على فكرتك
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   اكتب فكرتك أو موضوعك
@@ -341,22 +411,42 @@ export default function CreateContent() {
               </div>
             )}
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col gap-3 pt-4">
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => saveMutation.mutate('draft')}
+                  variant="outline"
+                  disabled={saveMutation.isPending}
+                  className="flex-1"
+                >
+                  حفظ كمسودة
+                </Button>
+                <Button
+                  onClick={() => saveMutation.mutate('approved')}
+                  disabled={saveMutation.isPending}
+                  className="flex-1"
+                >
+                  <Send className="w-4 h-4 ml-2" />
+                  اعتماد المحتوى
+                </Button>
+              </div>
               <Button
-                onClick={() => saveMutation.mutate('draft')}
+                onClick={async () => {
+                  await base44.entities.Template.create({
+                    template_name: editedTitle,
+                    template_content: editedText,
+                    category: 'general',
+                    seo_keywords: generatedContent.seo_keywords,
+                    trend_tags: generatedContent.trend_tags || []
+                  });
+                  queryClient.invalidateQueries(['templates']);
+                  toast.success('تم حفظ المحتوى كقالب جديد');
+                }}
                 variant="outline"
-                disabled={saveMutation.isPending}
-                className="flex-1"
+                className="w-full"
               >
-                حفظ كمسودة
-              </Button>
-              <Button
-                onClick={() => saveMutation.mutate('approved')}
-                disabled={saveMutation.isPending}
-                className="flex-1"
-              >
-                <Send className="w-4 h-4 ml-2" />
-                اعتماد المحتوى
+                <FileText className="w-4 h-4 ml-2" />
+                حفظ كقالب جديد
               </Button>
             </div>
           </CardContent>
