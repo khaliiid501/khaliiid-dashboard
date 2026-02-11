@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { 
@@ -13,17 +15,50 @@ import {
   Heart, 
   MousePointerClick,
   Calendar,
-  Award
+  Award,
+  DollarSign,
+  Target,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Users
 } from 'lucide-react';
 
 const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function Analytics() {
+  const [selectedCampaign, setSelectedCampaign] = useState('all');
+  const [selectedPlatform, setSelectedPlatform] = useState('all');
+
   const { data: allContent = [] } = useQuery({
     queryKey: ['analyticsContent'],
     queryFn: async () => {
       const user = await base44.auth.me();
       return await base44.entities.Content.filter({ created_by: user.email });
+    },
+  });
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['analyticsCampaigns'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      return await base44.entities.Campaign.filter({ created_by: user.email });
+    },
+  });
+
+  const { data: scheduledPosts = [] } = useQuery({
+    queryKey: ['analyticsScheduledPosts'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      return await base44.entities.ScheduledPost.filter({ created_by: user.email });
+    },
+  });
+
+  const { data: platforms = [] } = useQuery({
+    queryKey: ['analyticsPlatforms'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      return await base44.entities.ConnectedPlatform.filter({ created_by: user.email });
     },
   });
 
@@ -33,6 +68,77 @@ export default function Analytics() {
   const totalEngagement = publishedContent.reduce((sum, c) => sum + (c.performance_engagement || 0), 0);
   const totalConversions = publishedContent.reduce((sum, c) => sum + (c.performance_conversions || 0), 0);
   const avgEngagement = publishedContent.length > 0 ? (totalEngagement / publishedContent.length).toFixed(2) : 0;
+
+  // Campaign Analytics
+  const activeCampaigns = campaigns.filter(c => c.status === 'active');
+  const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
+  const totalSpent = campaigns.reduce((sum, c) => sum + (c.spent_budget || 0), 0);
+  const totalCampaignReach = campaigns.reduce((sum, c) => sum + (c.total_reach || 0), 0);
+  const totalCampaignEngagement = campaigns.reduce((sum, c) => sum + (c.total_engagement || 0), 0);
+  const totalCampaignConversions = campaigns.reduce((sum, c) => sum + (c.total_conversions || 0), 0);
+
+  // Calculate ROI for each campaign
+  const campaignsWithROI = campaigns.map(campaign => ({
+    ...campaign,
+    calculated_roi: campaign.spent_budget > 0 
+      ? (((campaign.roi || 0) - campaign.spent_budget) / campaign.spent_budget * 100).toFixed(2)
+      : 0,
+    budget_utilization: campaign.budget > 0 
+      ? ((campaign.spent_budget || 0) / campaign.budget * 100).toFixed(1)
+      : 0
+  })).sort((a, b) => b.calculated_roi - a.calculated_roi);
+
+  // Platform Performance Analysis
+  const platformPerformance = platforms.map(platform => {
+    const platformPosts = scheduledPosts.filter(post => 
+      post.platform_ids?.includes(platform.id) && post.status === 'published'
+    );
+    
+    const platformContent = publishedContent.filter(content =>
+      content.target_platforms?.includes(platform.platform_name)
+    );
+
+    const totalPlatformViews = platformContent.reduce((sum, c) => sum + (c.performance_views || 0), 0);
+    const totalPlatformEngagement = platformContent.reduce((sum, c) => sum + (c.performance_engagement || 0), 0);
+    const avgPlatformEngagement = platformContent.length > 0 
+      ? (totalPlatformEngagement / platformContent.length).toFixed(2) 
+      : 0;
+
+    return {
+      id: platform.id,
+      name: platform.platform_name,
+      account: platform.account_name,
+      posts: platformPosts.length,
+      content: platformContent.length,
+      views: totalPlatformViews,
+      engagement: parseFloat(avgPlatformEngagement),
+      successRate: platformPosts.length > 0 
+        ? ((platformPosts.filter(p => p.status === 'published').length / platformPosts.length) * 100).toFixed(1)
+        : 0
+    };
+  }).sort((a, b) => b.engagement - a.engagement);
+
+  // Campaign Comparison Data
+  const campaignComparisonData = campaigns.slice(0, 5).map(campaign => ({
+    name: campaign.campaign_name.substring(0, 15),
+    ميزانية: campaign.budget || 0,
+    مصروف: campaign.spent_budget || 0,
+    وصول: campaign.total_reach || 0,
+    تفاعل: campaign.total_engagement || 0,
+    تحويلات: campaign.total_conversions || 0,
+    roi: parseFloat(campaign.roi || 0)
+  }));
+
+  // Timeline data for trend analysis
+  const timelineData = publishedContent
+    .sort((a, b) => new Date(a.published_at) - new Date(b.published_at))
+    .slice(-30) // Last 30 pieces of content
+    .map(content => ({
+      date: new Date(content.published_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+      مشاهدات: content.performance_views || 0,
+      تفاعل: content.performance_engagement || 0,
+      تحويلات: content.performance_conversions || 0
+    }));
 
   // Content by status
   const contentByStatus = [
@@ -130,12 +236,350 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <Tabs defaultValue="performance" className="space-y-6">
-        <TabsList>
+      <Tabs defaultValue="campaigns" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="campaigns">الحملات</TabsTrigger>
+          <TabsTrigger value="platforms">المنصات</TabsTrigger>
+          <TabsTrigger value="trends">الاتجاهات</TabsTrigger>
           <TabsTrigger value="performance">أداء المحتوى</TabsTrigger>
           <TabsTrigger value="distribution">توزيع المحتوى</TabsTrigger>
-          <TabsTrigger value="top">الأفضل أداءً</TabsTrigger>
         </TabsList>
+
+        {/* Campaign Analytics Tab */}
+        <TabsContent value="campaigns" className="space-y-4">
+          {/* Campaign Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600">إجمالي الميزانية</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{totalBudget.toLocaleString()} ر.س</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-100">
+                    <DollarSign className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600">المصروف</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{totalSpent.toLocaleString()} ر.س</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-amber-100">
+                    <Target className="w-6 h-6 text-amber-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600">إجمالي الوصول</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{totalCampaignReach.toLocaleString()}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-emerald-100">
+                    <Users className="w-6 h-6 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-600">حملات نشطة</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{activeCampaigns.length}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-purple-100">
+                    <Zap className="w-6 h-6 text-purple-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Campaign Performance Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>مقارنة أداء الحملات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {campaignComparisonData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={campaignComparisonData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="وصول" fill="#0ea5e9" />
+                    <Bar dataKey="تفاعل" fill="#10b981" />
+                    <Bar dataKey="تحويلات" fill="#f59e0b" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="py-12 text-center text-slate-600">
+                  <Target className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                  <p>لا توجد حملات بعد</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ROI Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>عائد الاستثمار (ROI) للحملات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {campaignsWithROI.length > 0 ? (
+                <div className="space-y-3">
+                  {campaignsWithROI.map((campaign) => (
+                    <div key={campaign.id} className="p-4 rounded-lg border hover:shadow-md transition-all">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900">{campaign.campaign_name}</h4>
+                          <div className="flex items-center gap-3 mt-2">
+                            <Badge variant={campaign.status === 'active' ? 'default' : 'secondary'}>
+                              {campaign.status === 'active' ? 'نشطة' : campaign.status}
+                            </Badge>
+                            <span className="text-sm text-slate-600">
+                              الهدف: {campaign.campaign_goal}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-left">
+                          <div className={`flex items-center gap-1 text-lg font-bold ${
+                            parseFloat(campaign.calculated_roi) >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {parseFloat(campaign.calculated_roi) >= 0 ? (
+                              <ArrowUpRight className="w-5 h-5" />
+                            ) : (
+                              <ArrowDownRight className="w-5 h-5" />
+                            )}
+                            {campaign.calculated_roi}%
+                          </div>
+                          <p className="text-xs text-slate-600 mt-1">ROI</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                        <div>
+                          <p className="text-slate-600">الميزانية</p>
+                          <p className="font-semibold">{(campaign.budget || 0).toLocaleString()} ر.س</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-600">المصروف</p>
+                          <p className="font-semibold">{(campaign.spent_budget || 0).toLocaleString()} ر.س</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-600">الوصول</p>
+                          <p className="font-semibold">{(campaign.total_reach || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-600">التفاعل</p>
+                          <p className="font-semibold">{(campaign.total_engagement || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-600">التحويلات</p>
+                          <p className="font-semibold">{(campaign.total_conversions || 0)}</p>
+                        </div>
+                      </div>
+
+                      {/* Budget Utilization Bar */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                          <span>استخدام الميزانية</span>
+                          <span>{campaign.budget_utilization}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-l from-blue-500 to-emerald-500 h-2 rounded-full transition-all"
+                            style={{ width: `${Math.min(parseFloat(campaign.budget_utilization), 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-600">
+                  <DollarSign className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                  <p>لا توجد حملات لعرض ROI</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Platform Performance Tab */}
+        <TabsContent value="platforms" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>تحليل أداء المنصات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {platformPerformance.length > 0 ? (
+                <div className="space-y-3">
+                  {platformPerformance.map((platform, index) => (
+                    <div key={platform.id} className="p-4 rounded-lg border hover:shadow-md transition-all">
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 text-white font-bold">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900">{platform.name}</h4>
+                          <p className="text-sm text-slate-600">{platform.account}</p>
+                        </div>
+                        <Badge className="bg-green-100 text-green-700">
+                          {platform.engagement}% تفاعل
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div className="text-center p-3 bg-slate-50 rounded-lg">
+                          <p className="text-slate-600 mb-1">منشورات</p>
+                          <p className="text-lg font-bold text-slate-900">{platform.posts}</p>
+                        </div>
+                        <div className="text-center p-3 bg-slate-50 rounded-lg">
+                          <p className="text-slate-600 mb-1">محتوى</p>
+                          <p className="text-lg font-bold text-slate-900">{platform.content}</p>
+                        </div>
+                        <div className="text-center p-3 bg-slate-50 rounded-lg">
+                          <p className="text-slate-600 mb-1">مشاهدات</p>
+                          <p className="text-lg font-bold text-slate-900">{platform.views.toLocaleString()}</p>
+                        </div>
+                        <div className="text-center p-3 bg-slate-50 rounded-lg">
+                          <p className="text-slate-600 mb-1">نجاح</p>
+                          <p className="text-lg font-bold text-slate-900">{platform.successRate}%</p>
+                        </div>
+                      </div>
+
+                      {/* Performance Bar */}
+                      <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                          <span>معدل الأداء</span>
+                          <span>{platform.engagement}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div 
+                            className="bg-gradient-to-l from-emerald-500 to-blue-500 h-2 rounded-full transition-all"
+                            style={{ width: `${Math.min(parseFloat(platform.engagement), 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-slate-600">
+                  <Target className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                  <p>لا توجد منصات متصلة</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Platform Distribution Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>توزيع الأداء حسب المنصة</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {platformPerformance.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={platformPerformance}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="views" name="مشاهدات" fill="#0ea5e9" />
+                    <Bar dataKey="posts" name="منشورات" fill="#10b981" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="py-12 text-center text-slate-600">لا توجد بيانات</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Trends Over Time Tab */}
+        <TabsContent value="trends" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>الاتجاهات بمرور الوقت</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {timelineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={350}>
+                  <AreaChart data={timelineData}>
+                    <defs>
+                      <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorEngagement" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorConversions" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="مشاهدات" stroke="#0ea5e9" fillOpacity={1} fill="url(#colorViews)" />
+                    <Area type="monotone" dataKey="تفاعل" stroke="#10b981" fillOpacity={1} fill="url(#colorEngagement)" />
+                    <Area type="monotone" dataKey="تحويلات" stroke="#f59e0b" fillOpacity={1} fill="url(#colorConversions)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="py-12 text-center text-slate-600">
+                  <TrendingUp className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                  <p>لا توجد بيانات كافية لعرض الاتجاهات</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Campaign Budget vs Spent Trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle>اتجاه الميزانية والإنفاق للحملات</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {campaignComparisonData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={campaignComparisonData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="ميزانية" stroke="#0ea5e9" strokeWidth={3} />
+                    <Line type="monotone" dataKey="مصروف" stroke="#ef4444" strokeWidth={3} />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="py-12 text-center text-slate-600">لا توجد بيانات</div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
           <Card>
