@@ -236,47 +236,62 @@ export default function Automation() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">أتمتة الحملات</h1>
-        <p className="text-slate-600">إدارة القواعد التلقائية والقوالب والإشعارات</p>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-blue-600 to-purple-600 p-10 shadow-2xl">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30" />
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center animate-pulse-glow">
+            <Zap className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-1">أتمتة الحملات</h1>
+            <p className="text-white/90 text-lg">إدارة القواعد التلقائية والقوالب والإشعارات الذكية</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
+        <Card className="glass-card border-l-4 border-l-emerald-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">القواعد النشطة</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
+                <p className="text-sm font-medium text-slate-600">القواعد النشطة</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">
                   {rules.filter(r => r.is_active).length}
                 </p>
               </div>
-              <Zap className="w-8 h-8 text-emerald-600" />
+              <div className="p-4 rounded-2xl bg-emerald-100">
+                <Zap className="w-7 h-7 text-emerald-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card border-l-4 border-l-blue-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">القوالب المتاحة</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{templates.length}</p>
+                <p className="text-sm font-medium text-slate-600">القوالب المتاحة</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">{templates.length}</p>
               </div>
-              <FileText className="w-8 h-8 text-blue-600" />
+              <div className="p-4 rounded-2xl bg-blue-100">
+                <FileText className="w-7 h-7 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card border-l-4 border-l-amber-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">إشعارات غير مقروءة</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{unreadNotifications.length}</p>
+                <p className="text-sm font-medium text-slate-600">إشعارات غير مقروءة</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">{unreadNotifications.length}</p>
               </div>
-              <Bell className="w-8 h-8 text-amber-600" />
+              <div className="p-4 rounded-2xl bg-amber-100">
+                <Bell className="w-7 h-7 text-amber-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -448,7 +463,7 @@ export default function Automation() {
           </Dialog>
 
           {rules.length === 0 ? (
-            <Card>
+            <Card className="glass-card border-slate-200/50">
               <CardContent className="py-12 text-center">
                 <Zap className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">لا توجد قواعد تلقائية</h3>
@@ -462,7 +477,7 @@ export default function Automation() {
           ) : (
             <div className="grid gap-4">
               {rules.map((rule) => (
-                <Card key={rule.id} className={rule.is_active ? 'border-l-4 border-l-emerald-500' : ''}>
+                <Card key={rule.id} className={`glass-card hover-lift ${rule.is_active ? 'border-l-4 border-l-emerald-500' : 'border-slate-200/50'}`}>
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -637,7 +652,7 @@ export default function Automation() {
           </Dialog>
 
           {templates.length === 0 ? (
-            <Card>
+            <Card className="glass-card border-slate-200/50">
               <CardContent className="py-12 text-center">
                 <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">لا توجد قوالب</h3>
@@ -651,7 +666,7 @@ export default function Automation() {
           ) : (
             <div className="grid gap-4">
               {templates.map((template) => (
-                <Card key={template.id} className={template.auto_create ? 'border-l-4 border-l-blue-500' : ''}>
+                <Card key={template.id} className={`glass-card hover-lift ${template.auto_create ? 'border-l-4 border-l-blue-500' : 'border-slate-200/50'}`}>
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
@@ -706,7 +721,7 @@ export default function Automation() {
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-4">
           {notifications.length === 0 ? (
-            <Card>
+            <Card className="glass-card border-slate-200/50">
               <CardContent className="py-12 text-center">
                 <Bell className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">لا توجد إشعارات</h3>

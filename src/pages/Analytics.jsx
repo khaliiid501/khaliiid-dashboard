@@ -394,15 +394,27 @@ export default function Analytics() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">التحليلات والإحصائيات</h1>
-          <p className="text-slate-600">تتبع أداء محتواك وتحليل النتائج</p>
+      {/* Hero Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-900 via-purple-900 to-emerald-900 p-10 shadow-2xl">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <BarChart3 className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-1">التحليلات والإحصائيات</h1>
+              <p className="text-white/90 text-lg">تتبع أداء محتواك وتحليل النتائج بدقة</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsReportsDialogOpen(true)} 
+            className="px-6 py-3 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 text-white font-semibold hover:bg-white/30 transition-all flex items-center gap-2"
+          >
+            <FileDown className="w-5 h-5" />
+            تقارير متقدمة
+          </button>
         </div>
-        <Button onClick={() => setIsReportsDialogOpen(true)} variant="outline">
-          <FileDown className="w-4 h-4 ml-2" />
-          تقارير متقدمة
-        </Button>
       </div>
 
       {/* Reports Dialog */}
@@ -702,7 +714,7 @@ export default function Analytics() {
           </Card>
 
           {/* ROI Table */}
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>عائد الاستثمار (ROI) للحملات</CardTitle>
             </CardHeader>
@@ -789,7 +801,7 @@ export default function Analytics() {
 
         {/* Platform Performance Tab */}
         <TabsContent value="platforms" className="space-y-4">
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>تحليل أداء المنصات</CardTitle>
             </CardHeader>
@@ -856,7 +868,7 @@ export default function Analytics() {
           </Card>
 
           {/* Platform Distribution Chart */}
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>توزيع الأداء حسب المنصة</CardTitle>
             </CardHeader>
@@ -882,7 +894,7 @@ export default function Analytics() {
 
         {/* Trends Over Time Tab */}
         <TabsContent value="trends" className="space-y-4">
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>الاتجاهات بمرور الوقت</CardTitle>
             </CardHeader>
@@ -924,7 +936,7 @@ export default function Analytics() {
           </Card>
 
           {/* Campaign Budget vs Spent Trend */}
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>اتجاه الميزانية والإنفاق للحملات</CardTitle>
             </CardHeader>
@@ -949,7 +961,7 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="performance" className="space-y-4">
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>أداء المحتوى الأخير</CardTitle>
             </CardHeader>
@@ -979,7 +991,7 @@ export default function Analytics() {
 
         <TabsContent value="distribution" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
+            <Card className="glass-card border-slate-200/50 hover-lift">
               <CardHeader>
                 <CardTitle>حسب الحالة</CardTitle>
               </CardHeader>
@@ -1034,7 +1046,7 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="top" className="space-y-4">
-          <Card>
+          <Card className="glass-card border-slate-200/50 hover-lift">
             <CardHeader>
               <CardTitle>المحتوى الأفضل أداءً</CardTitle>
             </CardHeader>

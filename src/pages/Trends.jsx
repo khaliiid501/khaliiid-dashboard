@@ -185,7 +185,7 @@ export default function Trends() {
 
       {/* Loading State */}
       {analyzeCurrentTrendsMutation.isPending && (
-        <Card>
+        <Card className="glass-card border-slate-200/50">
           <CardContent className="py-12 text-center">
             <Loader2 className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
             <p className="text-slate-600">جاري تحليل الترندات الحالية...</p>
@@ -202,7 +202,7 @@ export default function Trends() {
           </TabsList>
 
           <TabsContent value="timing" className="space-y-4">
-            <Card>
+            <Card className="glass-card border-slate-200/50 hover-lift">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
@@ -223,7 +223,7 @@ export default function Trends() {
           </TabsContent>
 
           <TabsContent value="tips" className="space-y-4">
-            <Card>
+            <Card className="glass-card border-slate-200/50 hover-lift">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
@@ -249,7 +249,7 @@ export default function Trends() {
 
       {/* Empty State */}
       {!trends && !analyzeCurrentTrendsMutation.isPending && (
-        <Card>
+        <Card className="glass-card border-slate-200/50">
           <CardContent className="py-12 text-center">
             <TrendingUp className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-900 mb-2">اكتشف الترندات الحالية</h3>
