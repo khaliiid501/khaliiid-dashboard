@@ -51,6 +51,7 @@ import Home from './pages/Home';
 import CreateContent from './pages/CreateContent';
 import Templates from './pages/Templates';
 import AITraining from './pages/AITraining';
+import Settings from './pages/Settings';
 import __Layout from './Layout.jsx';
 
 
@@ -59,6 +60,7 @@ export const PAGES = {
     "CreateContent": CreateContent,
     "Templates": Templates,
     "AITraining": AITraining,
+    "Settings": Settings,
 }
 
 export const pagesConfig = {
