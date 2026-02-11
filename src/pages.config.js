@@ -52,6 +52,10 @@ import CreateContent from './pages/CreateContent';
 import Templates from './pages/Templates';
 import AITraining from './pages/AITraining';
 import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
+import ContentLibrary from './pages/ContentLibrary';
+import Trends from './pages/Trends';
+import Pricing from './pages/Pricing';
 import __Layout from './Layout.jsx';
 
 
@@ -61,6 +65,10 @@ export const PAGES = {
     "Templates": Templates,
     "AITraining": AITraining,
     "Settings": Settings,
+    "Analytics": Analytics,
+    "ContentLibrary": ContentLibrary,
+    "Trends": Trends,
+    "Pricing": Pricing,
 }
 
 export const pagesConfig = {
