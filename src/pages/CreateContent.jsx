@@ -15,7 +15,8 @@ import {
   TrendingUp,
   Edit3,
   Send,
-  FileText
+  FileText,
+  Brain
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
@@ -49,16 +50,48 @@ export default function CreateContent() {
     },
   });
 
+  const { data: preferences } = useQuery({
+    queryKey: ['contentPreferences'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      const prefs = await base44.entities.ContentPreferences.filter({ created_by: user.email });
+      return prefs[0] || null;
+    },
+  });
+
+  const { data: trainingExamples = [] } = useQuery({
+    queryKey: ['activeTrainingExamples'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      const examples = await base44.entities.TrainingExample.filter({ 
+        created_by: user.email,
+        is_active: true 
+      });
+      return examples.slice(0, 3);
+    },
+  });
+
   const generateMutation = useMutation({
     mutationFn: async ({ type, input, template }) => {
       const templateContext = template 
         ? `\n\nاستخدم هذا القالب كأساس للمحتوى:\n${template.template_content}\n\nوطوّره بناءً على الفكرة الجديدة.`
         : '';
 
+      const userStyleContext = preferences ? `\n\nأسلوب المستخدم المفضل:
+- النبرة: ${preferences.tone === 'casual' ? 'غير رسمية' : preferences.tone === 'professional' ? 'احترافية' : preferences.tone === 'friendly' ? 'ودودة' : preferences.tone === 'enthusiastic' ? 'حماسية' : 'رسمية'}
+- طول المحتوى: ${preferences.content_length_preference === 'short' ? '100-150 كلمة' : preferences.content_length_preference === 'long' ? '250+ كلمة' : '150-250 كلمة'}
+${preferences.cta_style ? `- أسلوب الدعوة للإجراء: ${preferences.cta_style}` : ''}
+${preferences.preferred_phrases?.length > 0 ? `- عبارات مفضلة: ${preferences.preferred_phrases.join(', ')}` : ''}
+${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ناجحة: ${preferences.successful_keywords.join(', ')}` : ''}` : '';
+
+      const trainingExamplesContext = trainingExamples.length > 0 
+        ? `\n\nأمثلة على أسلوب المستخدم المفضل:\n${trainingExamples.map((ex, i) => `${i + 1}. ${ex.example_title}:\n${ex.example_content}`).join('\n\n')}\n\nحاكي هذا الأسلوب في المحتوى الجديد.`
+        : '';
+
       const prompt = type === 'idea' 
         ? `أنت خبير تسويق سعودي متخصص في كتابة محتوى إعلاني قوي باللهجة السعودية. 
 
-المطلوب: اكتب محتوى إعلاني احترافي جذاب بناءً على الفكرة التالية: "${input}"${templateContext}
+المطلوب: اكتب محتوى إعلاني احترافي جذاب بناءً على الفكرة التالية: "${input}"${templateContext}${userStyleContext}${trainingExamplesContext}
 
 المتطلبات:
 1. استخدم اللهجة السعودية الطبيعية (مثل: وايد، كثير، زين، ممتاز، روعة، خيال)
@@ -279,6 +312,21 @@ export default function CreateContent() {
                     <div>
                       <p className="text-sm font-medium text-blue-900">اقتراحات الترند</p>
                       <p className="text-xs text-blue-700 mt-1">سيتم دمج الترندات الحالية في السعودية تلقائياً</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(preferences || trainingExamples.length > 0) && (
+                <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                  <div className="flex items-start gap-3">
+                    <Brain className="w-5 h-5 text-emerald-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-emerald-900">AI مخصص لأسلوبك</p>
+                      <p className="text-xs text-emerald-700 mt-1">
+                        {preferences && `النبرة: ${preferences.tone === 'friendly' ? 'ودودة' : preferences.tone}`}
+                        {trainingExamples.length > 0 && ` • ${trainingExamples.length} أمثلة تدريبية نشطة`}
+                      </p>
                     </div>
                   </div>
                 </div>
