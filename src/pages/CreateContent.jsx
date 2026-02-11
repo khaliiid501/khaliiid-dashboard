@@ -16,10 +16,14 @@ import {
   Edit3,
   Send,
   FileText,
-  Brain
+  Brain,
+  Eye,
+  Lightbulb
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
+import RichTextEditor from '../components/content/RichTextEditor';
+import PlatformPreview from '../components/content/PlatformPreview';
 
 export default function CreateContent() {
   const [activeTab, setActiveTab] = useState('idea');
@@ -30,6 +34,8 @@ export default function CreateContent() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedText, setEditedText] = useState('');
+  const [seoSuggestions, setSeoSuggestions] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -156,13 +162,59 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
     }
   });
 
+  const generateSEOMutation = useMutation({
+    mutationFn: async (content) => {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `أنت خبير SEO متخصص في السوق السعودي. حلل المحتوى التالي واقترح تحسينات:
+
+العنوان: ${editedTitle}
+المحتوى: ${content}
+
+قدم اقتراحات لتحسين SEO تشمل:
+1. كلمات مفتاحية إضافية مناسبة للسعودية
+2. نصائح لتحسين العنوان
+3. اقتراحات لتحسين المحتوى
+4. هاشتاقات مقترحة
+
+أرجع JSON:
+{
+  "recommended_keywords": ["كلمة1", "كلمة2"],
+  "title_suggestions": ["عنوان محسن 1", "عنوان محسن 2"],
+  "content_improvements": ["اقتراح 1", "اقتراح 2"],
+  "hashtags": ["#هاش1", "#هاش2"],
+  "seo_score": 75
+}`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            recommended_keywords: { type: "array", items: { type: "string" } },
+            title_suggestions: { type: "array", items: { type: "string" } },
+            content_improvements: { type: "array", items: { type: "string" } },
+            hashtags: { type: "array", items: { type: "string" } },
+            seo_score: { type: "number" }
+          }
+        }
+      });
+      return result;
+    },
+    onSuccess: (data) => {
+      setSeoSuggestions(data);
+      toast.success('تم توليد اقتراحات SEO');
+    }
+  });
+
   const saveMutation = useMutation({
     mutationFn: async (status) => {
       const user = await base44.auth.me();
       
+      // Strip HTML tags for plain text storage
+      const tmp = document.createElement('div');
+      tmp.innerHTML = editedText;
+      const plainText = tmp.textContent || tmp.innerText || '';
+      
       await base44.entities.Content.create({
         title: editedTitle,
-        content_text: editedText,
+        content_text: plainText,
         content_type: activeTab === 'idea' ? 'idea' : 'product_url',
         source_input: activeTab === 'idea' ? ideaInput : urlInput,
         seo_keywords: generatedContent.seo_keywords,
@@ -188,6 +240,8 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
       setIdeaInput('');
       setUrlInput('');
       setIsEditing(false);
+      setSeoSuggestions(null);
+      setShowPreview(false);
     }
   });
 
@@ -392,19 +446,42 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
       {generatedContent && (
         <Card className="border-2 border-emerald-500">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-emerald-600" />
                 المحتوى المولد
               </CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-              >
-                <Edit3 className="w-4 h-4 ml-2" />
-                {isEditing ? 'إلغاء التعديل' : 'تعديل'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPreview(!showPreview)}
+                >
+                  <Eye className="w-4 h-4 ml-2" />
+                  {showPreview ? 'إخفاء المعاينة' : 'معاينة'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateSEOMutation.mutate(editedText)}
+                  disabled={generateSEOMutation.isPending}
+                >
+                  {generateSEOMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <Lightbulb className="w-4 h-4 ml-2" />
+                  )}
+                  اقتراحات SEO
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
+                >
+                  <Edit3 className="w-4 h-4 ml-2" />
+                  {isEditing ? 'إلغاء التعديل' : 'تعديل'}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -418,12 +495,11 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">المحتوى</label>
-                  <Textarea
+                  <label className="block text-sm font-medium text-slate-700 mb-2">المحتوى (محرر غني)</label>
+                  <RichTextEditor
                     value={editedText}
-                    onChange={(e) => setEditedText(e.target.value)}
-                    rows={8}
-                    className="resize-none"
+                    onChange={setEditedText}
+                    placeholder="اكتب محتواك هنا..."
                   />
                 </div>
               </>
@@ -431,9 +507,95 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
               <>
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 mb-3">{editedTitle}</h3>
-                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{editedText}</p>
+                  <div 
+                    className="text-slate-700 leading-relaxed prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: editedText }}
+                  />
                 </div>
               </>
+            )}
+
+            {/* SEO Suggestions */}
+            {seoSuggestions && (
+              <Card className="bg-amber-50 border-amber-200">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-amber-600" />
+                    اقتراحات تحسين SEO
+                    {seoSuggestions.seo_score && (
+                      <Badge className="bg-amber-600 text-white mr-auto">
+                        نقاط SEO: {seoSuggestions.seo_score}/100
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {seoSuggestions.recommended_keywords?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">كلمات مفتاحية مقترحة:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {seoSuggestions.recommended_keywords.map((kw, idx) => (
+                          <Badge key={idx} variant="secondary" className="cursor-pointer hover:bg-slate-200">
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {seoSuggestions.title_suggestions?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">عناوين محسنة مقترحة:</p>
+                      <div className="space-y-2">
+                        {seoSuggestions.title_suggestions.map((title, idx) => (
+                          <div 
+                            key={idx}
+                            className="p-2 bg-white rounded border text-sm cursor-pointer hover:border-amber-400"
+                            onClick={() => setEditedTitle(title)}
+                          >
+                            {title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {seoSuggestions.content_improvements?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">نصائح التحسين:</p>
+                      <ul className="space-y-1 text-sm text-slate-600">
+                        {seoSuggestions.content_improvements.map((tip, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-amber-600">•</span>
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {seoSuggestions.hashtags?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">هاشتاقات مقترحة:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {seoSuggestions.hashtags.map((tag, idx) => (
+                          <Badge key={idx} className="bg-blue-100 text-blue-700">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Platform Preview */}
+            {showPreview && (
+              <PlatformPreview 
+                title={editedTitle} 
+                content={editedText}
+              />
             )}
 
             <div>
