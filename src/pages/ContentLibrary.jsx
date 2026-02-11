@@ -115,7 +115,7 @@ export default function ContentLibrary() {
 
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <Calendar className="w-3 h-3" />
-          {new Date(content.created_date).toLocaleDateString('ar-SA')}
+          {new Date(content.created_date).toLocaleDateString('en-GB')}
         </div>
 
         <div className="flex gap-2 pt-2 border-t">

@@ -145,7 +145,7 @@ export default function Analytics() {
     .sort((a, b) => new Date(a.published_at) - new Date(b.published_at))
     .slice(-30) // Last 30 pieces of content
     .map(content => ({
-      date: new Date(content.published_at).toLocaleDateString('ar-SA', { month: 'short', day: 'numeric' }),
+      date: new Date(content.published_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }),
       مشاهدات: content.performance_views || 0,
       تفاعل: content.performance_engagement || 0,
       تحويلات: content.performance_conversions || 0
@@ -208,7 +208,7 @@ export default function Analytics() {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 105, 30, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 105, 30, { align: 'center' });
     
     let yPos = 50;
     
@@ -253,7 +253,7 @@ export default function Analytics() {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 105, 30, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 105, 30, { align: 'center' });
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
@@ -316,7 +316,7 @@ export default function Analytics() {
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 105, 30, { align: 'center' });
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-GB')}`, 105, 30, { align: 'center' });
     
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);

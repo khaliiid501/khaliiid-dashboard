@@ -285,7 +285,7 @@ export default function Schedule() {
                     onChange={(e) => setScheduledTime(e.target.value)}
                   />
                   <p className="text-xs text-slate-500 mt-2">
-                    التاريخ المحدد: {format(selectedDate, 'dd MMMM yyyy', { locale: ar })} الساعة {scheduledTime}
+                    التاريخ المحدد: {format(selectedDate, 'dd/MM/yyyy')} الساعة {scheduledTime}
                   </p>
                 </div>
               </div>
@@ -391,7 +391,7 @@ export default function Schedule() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>
-              المنشورات المجدولة - {format(selectedDate, 'dd MMMM yyyy', { locale: ar })}
+              المنشورات المجدولة - {format(selectedDate, 'dd/MM/yyyy')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -417,7 +417,7 @@ export default function Schedule() {
                         <div className="flex-1">
                           <h4 className="font-semibold text-slate-900">{content?.title || 'محتوى محذوف'}</h4>
                           <p className="text-sm text-slate-600 mt-1">
-                            {format(parseISO(post.scheduled_date), 'hh:mm a', { locale: ar })}
+                            {format(parseISO(post.scheduled_date), 'HH:mm')}
                           </p>
                         </div>
                         <Badge className={getStatusColor(post.status)}>
@@ -496,7 +496,7 @@ export default function Schedule() {
                     <div className="flex-1">
                       <p className="font-medium text-slate-900">{content?.title || 'محتوى محذوف'}</p>
                       <p className="text-sm text-slate-600">
-                        {format(postDate, 'dd MMMM yyyy - hh:mm a', { locale: ar })}
+                        {format(postDate, 'dd/MM/yyyy - HH:mm')}
                       </p>
                     </div>
                     <Badge className={getStatusColor(post.status)}>

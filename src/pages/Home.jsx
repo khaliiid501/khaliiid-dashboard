@@ -366,11 +366,7 @@ export default function Home() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-slate-900">
-                        {new Date(post.scheduled_date).toLocaleDateString('en-GB', { 
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric'
-                        })} {new Date(post.scheduled_date).toLocaleTimeString('en-GB', {
+                        {new Date(post.scheduled_date).toLocaleDateString('en-GB')} {new Date(post.scheduled_date).toLocaleTimeString('en-GB', {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
