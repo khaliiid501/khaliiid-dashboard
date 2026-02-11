@@ -5,6 +5,7 @@ import {
   LayoutDashboard, 
   Sparkles, 
   Library, 
+  Calendar,
   Megaphone,
   FileText,
   Brain,
@@ -24,13 +25,14 @@ export default function Layout({ children, currentPageName }) {
     { name: 'لوحة التحكم', page: 'Home', icon: LayoutDashboard },
     { name: 'إنشاء محتوى', page: 'CreateContent', icon: Sparkles },
     { name: 'مكتبة المحتوى', page: 'ContentLibrary', icon: Library },
+    { name: 'جدولة النشر', page: 'Schedule', icon: Calendar },
     { name: 'الحملات', page: 'Campaigns', icon: Megaphone },
     { name: 'القوالب', page: 'Templates', icon: FileText },
     { name: 'تدريب AI', page: 'AITraining', icon: Brain },
     { name: 'الترندات', page: 'Trends', icon: TrendingUp },
     { name: 'التحليلات', page: 'Analytics', icon: BarChart3 },
     { name: 'الباقات', page: 'Pricing', icon: Crown },
-    { name: 'الإعدادات', page: 'Settings', icon: Settings },
+    { name: 'الإعدادات', page: 'Settings', icon: Calendar },
   ];
 
   return (
