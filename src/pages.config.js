@@ -59,6 +59,7 @@ import Schedule from './pages/Schedule';
 import Settings from './pages/Settings';
 import Templates from './pages/Templates';
 import Trends from './pages/Trends';
+import Notifications from './pages/Notifications';
 import __Layout from './Layout.jsx';
 
 
@@ -75,6 +76,7 @@ export const PAGES = {
     "Settings": Settings,
     "Templates": Templates,
     "Trends": Trends,
+    "Notifications": Notifications,
 }
 
 export const pagesConfig = {

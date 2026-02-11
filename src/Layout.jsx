@@ -15,7 +15,8 @@ import {
   Crown,
   Menu,
   X,
-  Zap
+  Zap,
+  Bell
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import NotificationBell from './components/NotificationBell';
@@ -29,6 +30,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'مكتبة المحتوى', page: 'ContentLibrary', icon: Library },
     { name: 'جدولة النشر', page: 'Schedule', icon: Calendar },
     { name: 'الحملات', page: 'Campaigns', icon: Megaphone },
+    { name: 'الإشعارات', page: 'Notifications', icon: Bell },
     { name: 'الأتمتة', page: 'Automation', icon: Zap },
     { name: 'القوالب', page: 'Templates', icon: FileText },
     { name: 'تدريب AI', page: 'AITraining', icon: Brain },
