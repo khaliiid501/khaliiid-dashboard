@@ -146,10 +146,8 @@ export default function Campaigns() {
 
   const importMutation = useMutation({
     mutationFn: async (file) => {
-      // Upload file first
       const uploadResult = await base44.integrations.Core.UploadFile({ file });
       
-      // Extract data from CSV
       const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url: uploadResult.file_url,
         json_schema: {
@@ -170,7 +168,6 @@ export default function Campaigns() {
         throw new Error(extractResult.details);
       }
 
-      // Bulk create campaigns
       const campaignsData = Array.isArray(extractResult.output) ? extractResult.output : [extractResult.output];
       await base44.entities.Campaign.bulkCreate(
         campaignsData.map(c => ({
@@ -232,9 +229,7 @@ export default function Campaigns() {
         }))
       };
 
-      // Generate report text
-      const reportText = `
-تقرير الأداء الشهري
+      const reportText = `تقرير الأداء الشهري
 =====================
 
 الفترة: ${report.period}
@@ -253,22 +248,18 @@ export default function Campaigns() {
 - متوسط ROI: ${report.avg_roi}%
 
 📋 تفاصيل الحملات:
-${report.campaigns.map((c, i) => `
-${i + 1}. ${c.name}
+${report.campaigns.map((c, i) => `${i + 1}. ${c.name}
    الهدف: ${c.goal}
    الميزانية: ${(c.budget || 0).toLocaleString()} ر.س
    المصروف: ${(c.spent || 0).toLocaleString()} ر.س
    الوصول: ${(c.reach || 0).toLocaleString()}
    التفاعل: ${c.engagement || 0}
    التحويلات: ${c.conversions || 0}
-   ROI: ${c.roi || 0}%
-`).join('\n')}
-      `;
+   ROI: ${c.roi || 0}%`).join('\n\n')}`;
 
       return { report, reportText };
     },
     onSuccess: ({ report, reportText }) => {
-      // Download as text file
       const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -394,7 +385,6 @@ ${i + 1}. ${c.name}
   };
 
   const activeCampaigns = campaigns.filter(c => c.status === 'active');
-  const draftCampaigns = campaigns.filter(c => c.status === 'draft');
   const totalBudget = campaigns.reduce((sum, c) => sum + (c.budget || 0), 0);
   const totalSpent = campaigns.reduce((sum, c) => sum + (c.spent_budget || 0), 0);
 
@@ -405,399 +395,400 @@ ${i + 1}. ${c.name}
           <h1 className="text-3xl font-bold text-slate-900 mb-2">إدارة الحملات</h1>
           <p className="text-slate-600">أنشئ وأدر حملاتك التسويقية</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsColumnsDialogOpen(true)} variant="outline" size="lg">
-            <Settings className="w-5 h-5 ml-2" />
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={() => setIsColumnsDialogOpen(true)} variant="outline">
+            <Settings className="w-4 h-4 ml-2" />
             الأعمدة
           </Button>
-          <Button onClick={() => setIsReportDialogOpen(true)} variant="outline" size="lg">
-            <FileDown className="w-5 h-5 ml-2" />
+          <Button onClick={() => setIsReportDialogOpen(true)} variant="outline">
+            <FileDown className="w-4 h-4 ml-2" />
             تقرير
           </Button>
-          <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" size="lg">
-            <Upload className="w-5 h-5 ml-2" />
+          <Button onClick={() => setIsImportDialogOpen(true)} variant="outline">
+            <Upload className="w-4 h-4 ml-2" />
             استيراد
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm} size="lg">
-                <Plus className="w-5 h-5 ml-2" />
-                حملة جديدة
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCampaign ? 'تعديل الحملة' : 'إنشاء حملة جديدة'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  اسم الحملة *
-                </label>
-                <Input
-                  value={formData.campaign_name}
-                  onChange={(e) => setFormData({ ...formData, campaign_name: e.target.value })}
-                  placeholder="مثال: حملة الصيف 2026"
-                />
-              </div>
+          <Button onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+            <Plus className="w-5 h-5 ml-2" />
+            حملة جديدة
+          </Button>
+        </div>
+      </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  وصف الحملة
-                </label>
-                <Textarea
-                  value={formData.campaign_description}
-                  onChange={(e) => setFormData({ ...formData, campaign_description: e.target.value })}
-                  placeholder="اكتب وصفاً مختصراً للحملة..."
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  هدف الحملة *
-                </label>
-                <Select value={formData.campaign_goal} onValueChange={(value) => setFormData({ ...formData, campaign_goal: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(campaignGoals).map(([key, goal]) => (
-                      <SelectItem key={key} value={key}>
-                        <div className="flex items-center gap-2">
-                          {React.createElement(goal.icon, { className: "w-4 h-4" })}
-                          {goal.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    تاريخ البدء *
-                  </label>
-                  <Input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    تاريخ الانتهاء *
-                  </label>
-                  <Input
-                    type="date"
-                    value={formData.end_date}
-                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  الميزانية (ريال سعودي)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.budget}
-                  onChange={(e) => setFormData({ ...formData, budget: parseFloat(e.target.value) || 0 })}
-                  placeholder="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  المنصات المستهدفة *
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {connectedPlatforms.filter(p => p.is_active).map((platform) => (
-                    <Button
-                      key={platform.id}
-                      type="button"
-                      variant={formData.selected_platforms.includes(platform.platform_name) ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => togglePlatform(platform.platform_name)}
-                      className="justify-start"
-                    >
-                      {formData.selected_platforms.includes(platform.platform_name) && (
-                        <CheckCircle className="w-4 h-4 ml-2" />
-                      )}
-                      {platform.account_name}
-                    </Button>
-                  ))}
-                </div>
-                {connectedPlatforms.filter(p => p.is_active).length === 0 && (
-                  <p className="text-sm text-slate-500">لا توجد منصات متصلة. قم بربط المنصات من الإعدادات</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  اختر المحتوى للحملة (اختياري)
-                </label>
-                <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-3">
-                  {allContent.filter(c => c.status !== 'draft').slice(0, 10).map((content) => (
-                    <div key={content.id} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.content_ids.includes(content.id)}
-                        onChange={() => toggleContent(content.id)}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-slate-700">{content.title}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <label className="block text-sm font-medium text-slate-700 mb-3">
-                  الجمهور المستهدف (اختياري)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    placeholder="الفئة العمرية (مثال: 18-35)"
-                    value={formData.target_audience.age_range}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      target_audience: { ...formData.target_audience, age_range: e.target.value }
-                    })}
-                  />
-                  <Select
-                    value={formData.target_audience.gender}
-                    onValueChange={(value) => setFormData({
-                      ...formData,
-                      target_audience: { ...formData.target_audience, gender: value }
-                    })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="الجنس" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">الكل</SelectItem>
-                      <SelectItem value="male">ذكور</SelectItem>
-                      <SelectItem value="female">إناث</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="الموقع"
-                    value={formData.target_audience.location}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      target_audience: { ...formData.target_audience, location: e.target.value }
-                    })}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    resetForm();
-                  }}
-                  className="flex-1"
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex-1"
-                >
-                  {editingCampaign ? 'حفظ التعديلات' : 'إنشاء الحملة'}
-                </Button>
-              </div>
+      {/* Import Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>استيراد حملات من CSV</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                اختر ملف CSV
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setImportFile(e.target.files[0])}
+                className="block w-full text-sm text-slate-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-lg file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-blue-50 file:text-blue-700
+                  hover:file:bg-blue-100"
+              />
             </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Import Dialog */}
-        <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>استيراد حملات من CSV</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  اختر ملف CSV
-                </label>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) => setImportFile(e.target.files[0])}
-                  className="block w-full text-sm text-slate-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-lg file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    hover:file:bg-blue-100"
-                />
-              </div>
-              
-              <div className="p-4 bg-slate-50 rounded-lg text-sm">
-                <p className="font-medium text-slate-900 mb-2">تنسيق الملف المطلوب:</p>
-                <code className="text-xs bg-white p-2 block rounded">
-                  campaign_name, campaign_description, campaign_goal, budget, start_date, end_date, selected_platforms
-                </code>
-                <p className="text-xs text-slate-600 mt-2">
-                  مثال: "حملة الصيف","عرض صيفي","sales",5000,"2026-06-01","2026-08-31","instagram,twitter"
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsImportDialogOpen(false)}
-                  className="flex-1"
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  onClick={handleImport}
-                  disabled={importMutation.isPending || !importFile}
-                  className="flex-1"
-                >
-                  {importMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
-                      جاري الاستيراد...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 ml-2" />
-                      استيراد
-                    </>
-                  )}
-                </Button>
-              </div>
+            
+            <div className="p-4 bg-slate-50 rounded-lg text-sm">
+              <p className="font-medium text-slate-900 mb-2">تنسيق الملف المطلوب:</p>
+              <code className="text-xs bg-white p-2 block rounded">
+                campaign_name, campaign_description, campaign_goal, budget, start_date, end_date, selected_platforms
+              </code>
+              <p className="text-xs text-slate-600 mt-2">
+                مثال: "حملة الصيف","عرض صيفي","sales",5000,"2026-06-01","2026-08-31","instagram,twitter"
+              </p>
             </div>
-          </DialogContent>
-        </Dialog>
 
-        {/* Reports Dialog */}
-        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>نماذج التقارير الجاهزة</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 mt-4">
-              <Card 
-                className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-500"
-                onClick={() => generateReportMutation.mutate('monthly')}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900 mb-1">تقرير الأداء الشهري</h3>
-                      <p className="text-sm text-slate-600">
-                        ملخص شامل لأداء الحملات خلال الشهر الحالي
-                      </p>
-                    </div>
-                    <FileDown className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-emerald-500"
-                onClick={() => {
-                  const csvContent = [
-                    ['اسم الحملة', 'الهدف', 'الحالة', 'الميزانية', 'المصروف', 'الوصول', 'التفاعل', 'التحويلات', 'ROI'],
-                    ...campaigns.map(c => [
-                      c.campaign_name,
-                      c.campaign_goal,
-                      c.status,
-                      c.budget || 0,
-                      c.spent_budget || 0,
-                      c.total_reach || 0,
-                      c.total_engagement || 0,
-                      c.total_conversions || 0,
-                      c.roi || 0
-                    ])
-                  ].map(row => row.join(',')).join('\n');
-
-                  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `جميع-الحملات-${new Date().toISOString().split('T')[0]}.csv`;
-                  document.body.appendChild(a);
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                  a.remove();
-                  
-                  toast.success('تم تصدير البيانات');
-                  setIsReportDialogOpen(false);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-slate-900 mb-1">تصدير جميع الحملات (CSV)</h3>
-                      <p className="text-sm text-slate-600">
-                        تصدير بيانات جميع الحملات بصيغة CSV
-                      </p>
-                    </div>
-                    <FileDown className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Columns Customization Dialog */}
-        <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>تخصيص الأعمدة المعروضة</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 mt-4">
-              {[
-                { key: 'name', label: 'اسم الحملة' },
-                { key: 'goal', label: 'الهدف' },
-                { key: 'dates', label: 'التواريخ' },
-                { key: 'budget', label: 'الميزانية' },
-                { key: 'reach', label: 'الوصول' },
-                { key: 'engagement', label: 'التفاعل' },
-                { key: 'conversions', label: 'التحويلات' },
-                { key: 'roi', label: 'ROI' },
-                { key: 'platforms', label: 'المنصات' }
-              ].map(col => (
-                <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50">
-                  <input
-                    type="checkbox"
-                    checked={visibleColumns[col.key]}
-                    onChange={() => toggleColumn(col.key)}
-                    className="rounded"
-                  />
-                  <label className="text-sm text-slate-700 cursor-pointer flex-1">
-                    {col.label}
-                  </label>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3 pt-4 mt-4 border-t">
+            <div className="flex gap-3 pt-4">
               <Button
                 variant="outline"
-                onClick={() => setIsColumnsDialogOpen(false)}
+                onClick={() => setIsImportDialogOpen(false)}
                 className="flex-1"
               >
-                إغلاق
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleImport}
+                disabled={importMutation.isPending || !importFile}
+                className="flex-1"
+              >
+                {importMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                    جاري الاستيراد...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 ml-2" />
+                    استيراد
+                  </>
+                )}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reports Dialog */}
+      <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>نماذج التقارير الجاهزة</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-500"
+              onClick={() => generateReportMutation.mutate('monthly')}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 mb-1">تقرير الأداء الشهري</h3>
+                    <p className="text-sm text-slate-600">
+                      ملخص شامل لأداء الحملات خلال الشهر الحالي
+                    </p>
+                  </div>
+                  <FileDown className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-emerald-500"
+              onClick={() => {
+                const csvContent = [
+                  ['اسم الحملة', 'الهدف', 'الحالة', 'الميزانية', 'المصروف', 'الوصول', 'التفاعل', 'التحويلات', 'ROI'],
+                  ...campaigns.map(c => [
+                    c.campaign_name,
+                    c.campaign_goal,
+                    c.status,
+                    c.budget || 0,
+                    c.spent_budget || 0,
+                    c.total_reach || 0,
+                    c.total_engagement || 0,
+                    c.total_conversions || 0,
+                    c.roi || 0
+                  ])
+                ].map(row => row.join(',')).join('\n');
+
+                const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `جميع-الحملات-${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                
+                toast.success('تم تصدير البيانات');
+                setIsReportDialogOpen(false);
+              }}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 mb-1">تصدير جميع الحملات (CSV)</h3>
+                    <p className="text-sm text-slate-600">
+                      تصدير بيانات جميع الحملات بصيغة CSV
+                    </p>
+                  </div>
+                  <FileDown className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Columns Customization Dialog */}
+      <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>تخصيص الأعمدة المعروضة</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            {[
+              { key: 'name', label: 'اسم الحملة' },
+              { key: 'goal', label: 'الهدف' },
+              { key: 'dates', label: 'التواريخ' },
+              { key: 'budget', label: 'الميزانية' },
+              { key: 'reach', label: 'الوصول' },
+              { key: 'engagement', label: 'التفاعل' },
+              { key: 'conversions', label: 'التحويلات' },
+              { key: 'roi', label: 'ROI' },
+              { key: 'platforms', label: 'المنصات' }
+            ].map(col => (
+              <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50">
+                <input
+                  type="checkbox"
+                  checked={visibleColumns[col.key]}
+                  onChange={() => toggleColumn(col.key)}
+                  className="rounded"
+                />
+                <label className="text-sm text-slate-700 cursor-pointer flex-1">
+                  {col.label}
+                </label>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-3 pt-4 mt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setIsColumnsDialogOpen(false)}
+              className="flex-1"
+            >
+              إغلاق
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create/Edit Campaign Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingCampaign ? 'تعديل الحملة' : 'إنشاء حملة جديدة'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                اسم الحملة *
+              </label>
+              <Input
+                value={formData.campaign_name}
+                onChange={(e) => setFormData({ ...formData, campaign_name: e.target.value })}
+                placeholder="مثال: حملة الصيف 2026"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                وصف الحملة
+              </label>
+              <Textarea
+                value={formData.campaign_description}
+                onChange={(e) => setFormData({ ...formData, campaign_description: e.target.value })}
+                placeholder="اكتب وصفاً مختصراً للحملة..."
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                هدف الحملة *
+              </label>
+              <Select value={formData.campaign_goal} onValueChange={(value) => setFormData({ ...formData, campaign_goal: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(campaignGoals).map(([key, goal]) => (
+                    <SelectItem key={key} value={key}>
+                      <div className="flex items-center gap-2">
+                        {React.createElement(goal.icon, { className: "w-4 h-4" })}
+                        {goal.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  تاريخ البدء *
+                </label>
+                <Input
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  تاريخ الانتهاء *
+                </label>
+                <Input
+                  type="date"
+                  value={formData.end_date}
+                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                الميزانية (ريال سعودي)
+              </label>
+              <Input
+                type="number"
+                value={formData.budget}
+                onChange={(e) => setFormData({ ...formData, budget: parseFloat(e.target.value) || 0 })}
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                المنصات المستهدفة *
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {connectedPlatforms.filter(p => p.is_active).map((platform) => (
+                  <Button
+                    key={platform.id}
+                    type="button"
+                    variant={formData.selected_platforms.includes(platform.platform_name) ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => togglePlatform(platform.platform_name)}
+                    className="justify-start"
+                  >
+                    {formData.selected_platforms.includes(platform.platform_name) && (
+                      <CheckCircle className="w-4 h-4 ml-2" />
+                    )}
+                    {platform.account_name}
+                  </Button>
+                ))}
+              </div>
+              {connectedPlatforms.filter(p => p.is_active).length === 0 && (
+                <p className="text-sm text-slate-500">لا توجد منصات متصلة. قم بربط المنصات من الإعدادات</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                اختر المحتوى للحملة (اختياري)
+              </label>
+              <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-3">
+                {allContent.filter(c => c.status !== 'draft').slice(0, 10).map((content) => (
+                  <div key={content.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.content_ids.includes(content.id)}
+                      onChange={() => toggleContent(content.id)}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-slate-700">{content.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                الجمهور المستهدف (اختياري)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  placeholder="الفئة العمرية (مثال: 18-35)"
+                  value={formData.target_audience.age_range}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    target_audience: { ...formData.target_audience, age_range: e.target.value }
+                  })}
+                />
+                <Select
+                  value={formData.target_audience.gender}
+                  onValueChange={(value) => setFormData({
+                    ...formData,
+                    target_audience: { ...formData.target_audience, gender: value }
+                  })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="الجنس" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">الكل</SelectItem>
+                    <SelectItem value="male">ذكور</SelectItem>
+                    <SelectItem value="female">إناث</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="الموقع"
+                  value={formData.target_audience.location}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    target_audience: { ...formData.target_audience, location: e.target.value }
+                  })}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}
+                className="flex-1"
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="flex-1"
+              >
+                {editingCampaign ? 'حفظ التعديلات' : 'إنشاء الحملة'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
