@@ -187,74 +187,11 @@ export default function Trends() {
 
       {/* Results */}
       {trends && !analyzeCurrentTrendsMutation.isPending && (
-        <Tabs defaultValue="hashtags">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="hashtags">هاشتاقات</TabsTrigger>
-            <TabsTrigger value="topics">مواضيع</TabsTrigger>
+        <Tabs defaultValue="timing">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="timing">أوقات النشر</TabsTrigger>
             <TabsTrigger value="tips">نصائح</TabsTrigger>
           </TabsList>
-
-          <TabsContent value="hashtags" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Hash className="w-5 h-5" />
-                  الهاشتاقات الرائجة
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {trends.trending_hashtags?.map((hashtag, index) => (
-                    <div key={index} className="p-4 rounded-lg bg-slate-50 hover:bg-slate-100 transition-all">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className="text-lg font-bold text-blue-600">{hashtag.tag}</h3>
-                        <Badge className={getCategoryColor(hashtag.category)}>
-                          {hashtag.category}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-slate-600 mb-2">{hashtag.description}</p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <Users className="w-3 h-3" />
-                        {hashtag.popularity}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="topics" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  المواضيع الساخنة
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {trends.hot_topics?.map((topic, index) => (
-                    <div key={index} className="p-4 rounded-lg border hover:shadow-md transition-all">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            {getTrendIcon(topic.trend_direction)}
-                            <h3 className="font-bold text-slate-900">{topic.topic}</h3>
-                            <Badge className={getCategoryColor(topic.category)}>
-                              {topic.category}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-slate-600">{topic.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="timing" className="space-y-4">
             <Card>
