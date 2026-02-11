@@ -206,7 +206,7 @@ export default function Campaigns() {
       const report = {
         report_type: reportType,
         generated_date: now.toISOString(),
-        period: `${monthStart.toLocaleDateString('ar-SA')} - ${monthEnd.toLocaleDateString('ar-SA')}`,
+        period: `${monthStart.toLocaleDateString('en-GB')} - ${monthEnd.toLocaleDateString('en-GB')}`,
         total_campaigns: monthlyCampaigns.length,
         active_campaigns: monthlyCampaigns.filter(c => c.status === 'active').length,
         total_budget: monthlyCampaigns.reduce((sum, c) => sum + (c.budget || 0), 0),
@@ -233,7 +233,7 @@ export default function Campaigns() {
 =====================
 
 الفترة: ${report.period}
-تاريخ التوليد: ${new Date(report.generated_date).toLocaleDateString('ar-SA')}
+تاريخ التوليد: ${new Date(report.generated_date).toLocaleDateString('en-GB')}
 
 📊 ملخص عام:
 - إجمالي الحملات: ${report.total_campaigns}
@@ -898,7 +898,7 @@ ${report.campaigns.map((c, i) => `${i + 1}. ${c.name}
                           {visibleColumns.dates && (
                             <Badge variant="outline" className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {new Date(campaign.start_date).toLocaleDateString('ar-SA')} - {new Date(campaign.end_date).toLocaleDateString('ar-SA')}
+                              {new Date(campaign.start_date).toLocaleDateString('en-GB')} - {new Date(campaign.end_date).toLocaleDateString('en-GB')}
                             </Badge>
                           )}
                         </div>

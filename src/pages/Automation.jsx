@@ -752,7 +752,7 @@ export default function Automation() {
                         <p className="text-sm text-slate-700 mb-2">{notification.message}</p>
                         
                         <div className="flex items-center gap-3 text-xs text-slate-600">
-                          <span>{new Date(notification.created_date).toLocaleDateString('ar-SA')}</span>
+                          <span>{new Date(notification.created_date).toLocaleDateString('en-GB')}</span>
                           <Badge variant="outline">{notification.priority}</Badge>
                         </div>
                       </div>
