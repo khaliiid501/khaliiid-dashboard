@@ -14,9 +14,11 @@ import {
   Settings, 
   Crown,
   Menu,
-  X
+  X,
+  Zap
 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import NotificationBell from './components/NotificationBell';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -27,6 +29,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'مكتبة المحتوى', page: 'ContentLibrary', icon: Library },
     { name: 'جدولة النشر', page: 'Schedule', icon: Calendar },
     { name: 'الحملات', page: 'Campaigns', icon: Megaphone },
+    { name: 'الأتمتة', page: 'Automation', icon: Zap },
     { name: 'القوالب', page: 'Templates', icon: FileText },
     { name: 'تدريب AI', page: 'AITraining', icon: Brain },
     { name: 'الترندات', page: 'Trends', icon: TrendingUp },
@@ -91,6 +94,9 @@ export default function Layout({ children, currentPageName }) {
 
           {/* User info */}
           <div className="p-4 border-t border-slate-200">
+            <div className="flex items-center justify-between mb-3 px-3">
+              <NotificationBell />
+            </div>
             <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-blue-500 flex items-center justify-center text-white font-bold">
                 م

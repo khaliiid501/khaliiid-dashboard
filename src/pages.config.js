@@ -58,6 +58,7 @@ import Templates from './pages/Templates';
 import Trends from './pages/Trends';
 import Campaigns from './pages/Campaigns';
 import Schedule from './pages/Schedule';
+import Automation from './pages/Automation';
 import __Layout from './Layout.jsx';
 
 
@@ -73,6 +74,7 @@ export const PAGES = {
     "Trends": Trends,
     "Campaigns": Campaigns,
     "Schedule": Schedule,
+    "Automation": Automation,
 }
 
 export const pagesConfig = {
