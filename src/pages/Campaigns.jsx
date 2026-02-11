@@ -20,7 +20,11 @@ import {
   Calendar,
   TrendingUp,
   Users,
-  Eye
+  Eye,
+  Upload,
+  FileDown,
+  Settings,
+  Loader2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +41,21 @@ const campaignGoals = {
 export default function Campaigns() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [isColumnsDialogOpen, setIsColumnsDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [visibleColumns, setVisibleColumns] = useState({
+    name: true,
+    goal: true,
+    dates: true,
+    budget: true,
+    reach: true,
+    engagement: true,
+    conversions: true,
+    roi: true,
+    platforms: true
+  });
   const [formData, setFormData] = useState({
     campaign_name: '',
     campaign_description: '',
@@ -124,6 +143,158 @@ export default function Campaigns() {
       queryClient.invalidateQueries(['campaigns']);
     }
   });
+
+  const importMutation = useMutation({
+    mutationFn: async (file) => {
+      // Upload file first
+      const uploadResult = await base44.integrations.Core.UploadFile({ file });
+      
+      // Extract data from CSV
+      const extractResult = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url: uploadResult.file_url,
+        json_schema: {
+          type: "object",
+          properties: {
+            campaign_name: { type: "string" },
+            campaign_description: { type: "string" },
+            campaign_goal: { type: "string" },
+            budget: { type: "number" },
+            start_date: { type: "string" },
+            end_date: { type: "string" },
+            selected_platforms: { type: "array", items: { type: "string" } }
+          }
+        }
+      });
+
+      if (extractResult.status === 'error') {
+        throw new Error(extractResult.details);
+      }
+
+      // Bulk create campaigns
+      const campaignsData = Array.isArray(extractResult.output) ? extractResult.output : [extractResult.output];
+      await base44.entities.Campaign.bulkCreate(
+        campaignsData.map(c => ({
+          ...c,
+          status: 'draft',
+          target_audience: {},
+          content_ids: [],
+          selected_platforms: c.selected_platforms || []
+        }))
+      );
+
+      return campaignsData.length;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries(['campaigns']);
+      setIsImportDialogOpen(false);
+      setImportFile(null);
+      toast.success(`تم استيراد ${count} حملة بنجاح`);
+    },
+    onError: (error) => {
+      toast.error('فشل الاستيراد: ' + error.message);
+    }
+  });
+
+  const generateReportMutation = useMutation({
+    mutationFn: async (reportType) => {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      const monthlyCampaigns = campaigns.filter(c => {
+        const startDate = new Date(c.start_date);
+        return startDate >= monthStart && startDate <= monthEnd;
+      });
+
+      const report = {
+        report_type: reportType,
+        generated_date: now.toISOString(),
+        period: `${monthStart.toLocaleDateString('ar-SA')} - ${monthEnd.toLocaleDateString('ar-SA')}`,
+        total_campaigns: monthlyCampaigns.length,
+        active_campaigns: monthlyCampaigns.filter(c => c.status === 'active').length,
+        total_budget: monthlyCampaigns.reduce((sum, c) => sum + (c.budget || 0), 0),
+        total_spent: monthlyCampaigns.reduce((sum, c) => sum + (c.spent_budget || 0), 0),
+        total_reach: monthlyCampaigns.reduce((sum, c) => sum + (c.total_reach || 0), 0),
+        total_engagement: monthlyCampaigns.reduce((sum, c) => sum + (c.total_engagement || 0), 0),
+        total_conversions: monthlyCampaigns.reduce((sum, c) => sum + (c.total_conversions || 0), 0),
+        avg_roi: monthlyCampaigns.length > 0 
+          ? (monthlyCampaigns.reduce((sum, c) => sum + (c.roi || 0), 0) / monthlyCampaigns.length).toFixed(2)
+          : 0,
+        campaigns: monthlyCampaigns.map(c => ({
+          name: c.campaign_name,
+          goal: c.campaign_goal,
+          budget: c.budget,
+          spent: c.spent_budget,
+          reach: c.total_reach,
+          engagement: c.total_engagement,
+          conversions: c.total_conversions,
+          roi: c.roi
+        }))
+      };
+
+      // Generate report text
+      const reportText = `
+تقرير الأداء الشهري
+=====================
+
+الفترة: ${report.period}
+تاريخ التوليد: ${new Date(report.generated_date).toLocaleDateString('ar-SA')}
+
+📊 ملخص عام:
+- إجمالي الحملات: ${report.total_campaigns}
+- حملات نشطة: ${report.active_campaigns}
+- إجمالي الميزانية: ${report.total_budget.toLocaleString()} ر.س
+- إجمالي المصروف: ${report.total_spent.toLocaleString()} ر.س
+
+📈 الأداء:
+- إجمالي الوصول: ${report.total_reach.toLocaleString()}
+- إجمالي التفاعل: ${report.total_engagement.toLocaleString()}
+- إجمالي التحويلات: ${report.total_conversions}
+- متوسط ROI: ${report.avg_roi}%
+
+📋 تفاصيل الحملات:
+${report.campaigns.map((c, i) => `
+${i + 1}. ${c.name}
+   الهدف: ${c.goal}
+   الميزانية: ${(c.budget || 0).toLocaleString()} ر.س
+   المصروف: ${(c.spent || 0).toLocaleString()} ر.س
+   الوصول: ${(c.reach || 0).toLocaleString()}
+   التفاعل: ${c.engagement || 0}
+   التحويلات: ${c.conversions || 0}
+   ROI: ${c.roi || 0}%
+`).join('\n')}
+      `;
+
+      return { report, reportText };
+    },
+    onSuccess: ({ report, reportText }) => {
+      // Download as text file
+      const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `تقرير-الحملات-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      
+      setIsReportDialogOpen(false);
+      toast.success('تم توليد التقرير وتنزيله');
+    }
+  });
+
+  const handleImport = () => {
+    if (!importFile) {
+      toast.error('الرجاء اختيار ملف CSV');
+      return;
+    }
+    importMutation.mutate(importFile);
+  };
+
+  const toggleColumn = (column) => {
+    setVisibleColumns(prev => ({ ...prev, [column]: !prev[column] }));
+  };
 
   const resetForm = () => {
     setFormData({
@@ -229,18 +400,31 @@ export default function Campaigns() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">إدارة الحملات</h1>
           <p className="text-slate-600">أنشئ وأدر حملاتك التسويقية</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm} size="lg">
-              <Plus className="w-5 h-5 ml-2" />
-              حملة جديدة
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsColumnsDialogOpen(true)} variant="outline" size="lg">
+            <Settings className="w-5 h-5 ml-2" />
+            الأعمدة
+          </Button>
+          <Button onClick={() => setIsReportDialogOpen(true)} variant="outline" size="lg">
+            <FileDown className="w-5 h-5 ml-2" />
+            تقرير
+          </Button>
+          <Button onClick={() => setIsImportDialogOpen(true)} variant="outline" size="lg">
+            <Upload className="w-5 h-5 ml-2" />
+            استيراد
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm} size="lg">
+                <Plus className="w-5 h-5 ml-2" />
+                حملة جديدة
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
@@ -434,6 +618,185 @@ export default function Campaigns() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Import Dialog */}
+        <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>استيراد حملات من CSV</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  اختر ملف CSV
+                </label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setImportFile(e.target.files[0])}
+                  className="block w-full text-sm text-slate-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-blue-50 file:text-blue-700
+                    hover:file:bg-blue-100"
+                />
+              </div>
+              
+              <div className="p-4 bg-slate-50 rounded-lg text-sm">
+                <p className="font-medium text-slate-900 mb-2">تنسيق الملف المطلوب:</p>
+                <code className="text-xs bg-white p-2 block rounded">
+                  campaign_name, campaign_description, campaign_goal, budget, start_date, end_date, selected_platforms
+                </code>
+                <p className="text-xs text-slate-600 mt-2">
+                  مثال: "حملة الصيف","عرض صيفي","sales",5000,"2026-06-01","2026-08-31","instagram,twitter"
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsImportDialogOpen(false)}
+                  className="flex-1"
+                >
+                  إلغاء
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={importMutation.isPending || !importFile}
+                  className="flex-1"
+                >
+                  {importMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                      جاري الاستيراد...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 ml-2" />
+                      استيراد
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Reports Dialog */}
+        <Dialog open={isReportDialogOpen} onOpenChange={setIsReportDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>نماذج التقارير الجاهزة</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 mt-4">
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-500"
+                onClick={() => generateReportMutation.mutate('monthly')}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-slate-900 mb-1">تقرير الأداء الشهري</h3>
+                      <p className="text-sm text-slate-600">
+                        ملخص شامل لأداء الحملات خلال الشهر الحالي
+                      </p>
+                    </div>
+                    <FileDown className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-emerald-500"
+                onClick={() => {
+                  const csvContent = [
+                    ['اسم الحملة', 'الهدف', 'الحالة', 'الميزانية', 'المصروف', 'الوصول', 'التفاعل', 'التحويلات', 'ROI'],
+                    ...campaigns.map(c => [
+                      c.campaign_name,
+                      c.campaign_goal,
+                      c.status,
+                      c.budget || 0,
+                      c.spent_budget || 0,
+                      c.total_reach || 0,
+                      c.total_engagement || 0,
+                      c.total_conversions || 0,
+                      c.roi || 0
+                    ])
+                  ].map(row => row.join(',')).join('\n');
+
+                  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `جميع-الحملات-${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  window.URL.revokeObjectURL(url);
+                  a.remove();
+                  
+                  toast.success('تم تصدير البيانات');
+                  setIsReportDialogOpen(false);
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-slate-900 mb-1">تصدير جميع الحملات (CSV)</h3>
+                      <p className="text-sm text-slate-600">
+                        تصدير بيانات جميع الحملات بصيغة CSV
+                      </p>
+                    </div>
+                    <FileDown className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Columns Customization Dialog */}
+        <Dialog open={isColumnsDialogOpen} onOpenChange={setIsColumnsDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>تخصيص الأعمدة المعروضة</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 mt-4">
+              {[
+                { key: 'name', label: 'اسم الحملة' },
+                { key: 'goal', label: 'الهدف' },
+                { key: 'dates', label: 'التواريخ' },
+                { key: 'budget', label: 'الميزانية' },
+                { key: 'reach', label: 'الوصول' },
+                { key: 'engagement', label: 'التفاعل' },
+                { key: 'conversions', label: 'التحويلات' },
+                { key: 'roi', label: 'ROI' },
+                { key: 'platforms', label: 'المنصات' }
+              ].map(col => (
+                <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={visibleColumns[col.key]}
+                    onChange={() => toggleColumn(col.key)}
+                    className="rounded"
+                  />
+                  <label className="text-sm text-slate-700 cursor-pointer flex-1">
+                    {col.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 pt-4 mt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => setIsColumnsDialogOpen(false)}
+                className="flex-1"
+              >
+                إغلاق
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats */}
@@ -515,7 +878,9 @@ export default function Campaigns() {
                         <GoalIcon className="w-6 h-6 text-blue-600" />
                       </div>
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{campaign.campaign_name}</CardTitle>
+                        {visibleColumns.name && (
+                          <CardTitle className="text-xl mb-2">{campaign.campaign_name}</CardTitle>
+                        )}
                         {campaign.campaign_description && (
                           <p className="text-sm text-slate-600 mb-3">{campaign.campaign_description}</p>
                         )}
@@ -523,13 +888,17 @@ export default function Campaigns() {
                           <Badge className={getStatusColor(campaign.status)}>
                             {getStatusLabel(campaign.status)}
                           </Badge>
-                          <Badge variant="outline">
-                            {campaignGoals[campaign.campaign_goal]?.label}
-                          </Badge>
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(campaign.start_date).toLocaleDateString('ar-SA')} - {new Date(campaign.end_date).toLocaleDateString('ar-SA')}
-                          </Badge>
+                          {visibleColumns.goal && (
+                            <Badge variant="outline">
+                              {campaignGoals[campaign.campaign_goal]?.label}
+                            </Badge>
+                          )}
+                          {visibleColumns.dates && (
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(campaign.start_date).toLocaleDateString('ar-SA')} - {new Date(campaign.end_date).toLocaleDateString('ar-SA')}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -537,41 +906,53 @@ export default function Campaigns() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-lg bg-slate-50">
-                    <div>
-                      <p className="text-xs text-slate-600">الوصول</p>
-                      <p className="text-lg font-bold text-slate-900">{campaign.total_reach?.toLocaleString() || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-600">التفاعل</p>
-                      <p className="text-lg font-bold text-slate-900">{campaign.total_engagement || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-600">التحويلات</p>
-                      <p className="text-lg font-bold text-slate-900">{campaign.total_conversions || 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-600">ROI</p>
-                      <p className="text-lg font-bold text-slate-900">{campaign.roi || 0}%</p>
-                    </div>
+                    {visibleColumns.reach && (
+                      <div>
+                        <p className="text-xs text-slate-600">الوصول</p>
+                        <p className="text-lg font-bold text-slate-900">{campaign.total_reach?.toLocaleString() || 0}</p>
+                      </div>
+                    )}
+                    {visibleColumns.engagement && (
+                      <div>
+                        <p className="text-xs text-slate-600">التفاعل</p>
+                        <p className="text-lg font-bold text-slate-900">{campaign.total_engagement || 0}</p>
+                      </div>
+                    )}
+                    {visibleColumns.conversions && (
+                      <div>
+                        <p className="text-xs text-slate-600">التحويلات</p>
+                        <p className="text-lg font-bold text-slate-900">{campaign.total_conversions || 0}</p>
+                      </div>
+                    )}
+                    {visibleColumns.roi && (
+                      <div>
+                        <p className="text-xs text-slate-600">ROI</p>
+                        <p className="text-lg font-bold text-slate-900">{campaign.roi || 0}%</p>
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-600">الميزانية</span>
-                      <span className="text-sm font-medium text-slate-900">
-                        {campaign.spent_budget?.toLocaleString() || 0} / {campaign.budget?.toLocaleString() || 0} ر.س
-                      </span>
+                  {visibleColumns.budget && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-slate-600">الميزانية</span>
+                        <span className="text-sm font-medium text-slate-900">
+                          {campaign.spent_budget?.toLocaleString() || 0} / {campaign.budget?.toLocaleString() || 0} ر.س
+                        </span>
+                      </div>
+                      <Progress value={budgetProgress} className="h-2" />
                     </div>
-                    <Progress value={budgetProgress} className="h-2" />
-                  </div>
+                  )}
 
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {campaign.selected_platforms?.map((platform) => (
-                      <Badge key={platform} variant="secondary" className="text-xs">
-                        {platform}
-                      </Badge>
-                    ))}
-                  </div>
+                  {visibleColumns.platforms && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {campaign.selected_platforms?.map((platform) => (
+                        <Badge key={platform} variant="secondary" className="text-xs">
+                          {platform}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-2 border-t">
                     {campaign.status === 'draft' && (
