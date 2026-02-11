@@ -49,12 +49,14 @@
  */
 import Home from './pages/Home';
 import CreateContent from './pages/CreateContent';
+import Templates from './pages/Templates';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Home": Home,
     "CreateContent": CreateContent,
+    "Templates": Templates,
 }
 
 export const pagesConfig = {
