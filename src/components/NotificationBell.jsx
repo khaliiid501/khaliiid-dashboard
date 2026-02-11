@@ -50,18 +50,25 @@ export default function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative hover:bg-slate-100 rounded-xl transition-all">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 bg-red-600 text-white text-xs">
+            <div className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold shadow-lg animate-pulse">
               {unreadCount > 9 ? '9+' : unreadCount}
-            </Badge>
+            </div>
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 border-b">
-          <h3 className="font-semibold text-slate-900">الإشعارات</h3>
+      <PopoverContent className="w-80 p-0 glass-card border-slate-200/50 shadow-xl" align="end">
+        <div className="p-4 border-b border-slate-200/50 bg-gradient-to-l from-blue-50 to-emerald-50">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-slate-900">الإشعارات</h3>
+            {unreadCount > 0 && (
+              <div className="px-2 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">
+                {unreadCount} جديد
+              </div>
+            )}
+          </div>
         </div>
         
         <div className="max-h-96 overflow-y-auto">
