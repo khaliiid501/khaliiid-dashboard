@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
@@ -21,14 +23,21 @@ import {
   Zap,
   ArrowUpRight,
   ArrowDownRight,
-  Users
+  Users,
+  FileDown,
+  Activity,
+  BarChart3,
+  Percent
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import { toast } from 'sonner';
 
 const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function Analytics() {
   const [selectedCampaign, setSelectedCampaign] = useState('all');
   const [selectedPlatform, setSelectedPlatform] = useState('all');
+  const [isReportsDialogOpen, setIsReportsDialogOpen] = useState(false);
 
   const { data: allContent = [] } = useQuery({
     queryKey: ['analyticsContent'],
@@ -170,70 +179,455 @@ export default function Analytics() {
     { name: 'من رابط', value: allContent.filter(c => c.content_type === 'product_url').length },
   ].filter(item => item.value > 0);
 
+  // Additional KPIs
+  const avgCampaignROI = campaigns.length > 0 
+    ? (campaigns.reduce((sum, c) => sum + (c.roi || 0), 0) / campaigns.length).toFixed(2)
+    : 0;
+  
+  const budgetUtilization = totalBudget > 0 
+    ? ((totalSpent / totalBudget) * 100).toFixed(1)
+    : 0;
+
+  const conversionRate = totalCampaignReach > 0 
+    ? ((totalCampaignConversions / totalCampaignReach) * 100).toFixed(2)
+    : 0;
+
+  const engagementRate = totalCampaignReach > 0 
+    ? ((totalCampaignEngagement / totalCampaignReach) * 100).toFixed(2)
+    : 0;
+
+  // Generate Platform Performance Report
+  const generatePlatformReport = () => {
+    const doc = new jsPDF();
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('Platform Performance Report', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 105, 30, { align: 'center' });
+    
+    let yPos = 50;
+    
+    platformPerformance.forEach((platform, index) => {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(`${index + 1}. ${platform.name}`, 20, yPos);
+      
+      yPos += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Account: ${platform.account}`, 25, yPos);
+      
+      yPos += 6;
+      doc.text(`Posts: ${platform.posts} | Content: ${platform.content}`, 25, yPos);
+      
+      yPos += 6;
+      doc.text(`Views: ${platform.views.toLocaleString()} | Engagement: ${platform.engagement}%`, 25, yPos);
+      
+      yPos += 6;
+      doc.text(`Success Rate: ${platform.successRate}%`, 25, yPos);
+      
+      yPos += 12;
+    });
+    
+    doc.save(`platform-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('تم تنزيل تقرير أداء المنصات');
+  };
+
+  // Generate Budget Report
+  const generateBudgetReport = () => {
+    const doc = new jsPDF();
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('Budget vs Spending Report', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 105, 30, { align: 'center' });
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary:', 20, 50);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Total Budget: ${totalBudget.toLocaleString()} SAR`, 25, 58);
+    doc.text(`Total Spent: ${totalSpent.toLocaleString()} SAR`, 25, 64);
+    doc.text(`Budget Utilization: ${budgetUtilization}%`, 25, 70);
+    doc.text(`Remaining: ${(totalBudget - totalSpent).toLocaleString()} SAR`, 25, 76);
+    
+    let yPos = 90;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Campaign Details:', 20, yPos);
+    
+    yPos += 10;
+    campaigns.forEach((campaign, index) => {
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(`${index + 1}. ${campaign.campaign_name}`, 20, yPos);
+      
+      yPos += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Budget: ${(campaign.budget || 0).toLocaleString()} SAR`, 25, yPos);
+      
+      yPos += 5;
+      doc.text(`Spent: ${(campaign.spent_budget || 0).toLocaleString()} SAR`, 25, yPos);
+      
+      yPos += 5;
+      const utilization = campaign.budget > 0 
+        ? ((campaign.spent_budget || 0) / campaign.budget * 100).toFixed(1)
+        : 0;
+      doc.text(`Utilization: ${utilization}%`, 25, yPos);
+      
+      yPos += 5;
+      doc.text(`ROI: ${campaign.roi || 0}%`, 25, yPos);
+      
+      yPos += 10;
+    });
+    
+    doc.save(`budget-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('تم تنزيل تقرير الميزانية');
+  };
+
+  // Generate Comprehensive Dashboard Report
+  const generateDashboardReport = () => {
+    const doc = new jsPDF();
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.text('Analytics Dashboard Report', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, 105, 30, { align: 'center' });
+    
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Key Performance Indicators', 20, 45);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    let yPos = 55;
+    
+    doc.text(`Total Views: ${totalViews.toLocaleString()}`, 25, yPos);
+    yPos += 6;
+    doc.text(`Average Engagement: ${avgEngagement}%`, 25, yPos);
+    yPos += 6;
+    doc.text(`Total Conversions: ${totalConversions}`, 25, yPos);
+    yPos += 6;
+    doc.text(`Conversion Rate: ${conversionRate}%`, 25, yPos);
+    yPos += 6;
+    doc.text(`Engagement Rate: ${engagementRate}%`, 25, yPos);
+    
+    yPos += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Campaign Metrics', 20, yPos);
+    
+    yPos += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Total Campaigns: ${campaigns.length}`, 25, yPos);
+    yPos += 6;
+    doc.text(`Active Campaigns: ${activeCampaigns.length}`, 25, yPos);
+    yPos += 6;
+    doc.text(`Total Budget: ${totalBudget.toLocaleString()} SAR`, 25, yPos);
+    yPos += 6;
+    doc.text(`Total Spent: ${totalSpent.toLocaleString()} SAR`, 25, yPos);
+    yPos += 6;
+    doc.text(`Budget Utilization: ${budgetUtilization}%`, 25, yPos);
+    yPos += 6;
+    doc.text(`Average Campaign ROI: ${avgCampaignROI}%`, 25, yPos);
+    yPos += 6;
+    doc.text(`Total Campaign Reach: ${totalCampaignReach.toLocaleString()}`, 25, yPos);
+    
+    yPos += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('Platform Performance', 20, yPos);
+    
+    yPos += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Connected Platforms: ${platforms.length}`, 25, yPos);
+    yPos += 6;
+    doc.text(`Published Content: ${publishedContent.length}`, 25, yPos);
+    
+    yPos += 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Top Performing Platforms:', 20, yPos);
+    
+    yPos += 8;
+    platformPerformance.slice(0, 5).forEach((platform, index) => {
+      if (yPos > 260) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`${index + 1}. ${platform.name}: ${platform.engagement}% engagement`, 25, yPos);
+      yPos += 5;
+    });
+    
+    doc.save(`dashboard-report-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('تم تنزيل تقرير لوحة التحكم');
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">التحليلات والإحصائيات</h1>
-        <p className="text-slate-600">تتبع أداء محتواك وتحليل النتائج</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">التحليلات والإحصائيات</h1>
+          <p className="text-slate-600">تتبع أداء محتواك وتحليل النتائج</p>
+        </div>
+        <Button onClick={() => setIsReportsDialogOpen(true)} variant="outline">
+          <FileDown className="w-4 h-4 ml-2" />
+          تقارير متقدمة
+        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">إجمالي المشاهدات</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{totalViews.toLocaleString()}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-blue-100">
-                <Eye className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Reports Dialog */}
+      <Dialog open={isReportsDialogOpen} onOpenChange={setIsReportsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>التقارير المتقدمة</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4">
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-blue-500"
+              onClick={generateDashboardReport}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 mb-1">تقرير لوحة التحكم الشامل</h3>
+                    <p className="text-sm text-slate-600">
+                      تقرير كامل لجميع المؤشرات الرئيسية وأداء الحملات والمنصات
+                    </p>
+                  </div>
+                  <FileDown className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">متوسط التفاعل</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{avgEngagement}%</p>
-              </div>
-              <div className="p-3 rounded-lg bg-emerald-100">
-                <Heart className="w-6 h-6 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-emerald-500"
+              onClick={generatePlatformReport}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 mb-1">تقرير أداء المنصات</h3>
+                    <p className="text-sm text-slate-600">
+                      تحليل مفصل لأداء كل منصة مع المقاييس والإحصائيات
+                    </p>
+                  </div>
+                  <FileDown className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-600">التحويلات</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{totalConversions}</p>
-              </div>
-              <div className="p-3 rounded-lg bg-amber-100">
-                <MousePointerClick className="w-6 h-6 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-all border-2 hover:border-amber-500"
+              onClick={generateBudgetReport}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900 mb-1">تقرير الميزانية مقابل المصروف</h3>
+                    <p className="text-sm text-slate-600">
+                      تقرير مالي شامل يوضح الميزانيات والمصروفات وعائد الاستثمار
+                    </p>
+                  </div>
+                  <FileDown className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
+      {/* Main Dashboard - KPI Cards */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-bold text-slate-900">لوحة التحكم الرئيسية</h2>
+        
+        {/* Primary KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="border-l-4 border-l-blue-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">إجمالي المشاهدات</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">{totalViews.toLocaleString()}</p>
+                  <p className="text-xs text-slate-500 mt-1">من {publishedContent.length} محتوى منشور</p>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-100">
+                  <Eye className="w-6 h-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-emerald-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">معدل التفاعل</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">{engagementRate}%</p>
+                  <p className="text-xs text-slate-500 mt-1">من إجمالي {totalCampaignReach.toLocaleString()} وصول</p>
+                </div>
+                <div className="p-3 rounded-lg bg-emerald-100">
+                  <Activity className="w-6 h-6 text-emerald-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-amber-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">معدل التحويل</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">{conversionRate}%</p>
+                  <p className="text-xs text-slate-500 mt-1">{totalCampaignConversions} تحويلات</p>
+                </div>
+                <div className="p-3 rounded-lg bg-amber-100">
+                  <Percent className="w-6 h-6 text-amber-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-purple-500">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">متوسط ROI</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">{avgCampaignROI}%</p>
+                  <p className="text-xs text-slate-500 mt-1">لـ {campaigns.length} حملات</p>
+                </div>
+                <div className="p-3 rounded-lg bg-purple-100">
+                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Campaign & Budget Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                نظرة عامة على الميزانية
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">إجمالي الميزانية</span>
+                  <span className="text-lg font-bold text-slate-900">{totalBudget.toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">المصروف</span>
+                  <span className="text-lg font-bold text-amber-600">{totalSpent.toLocaleString()} ر.س</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">المتبقي</span>
+                  <span className="text-lg font-bold text-emerald-600">{(totalBudget - totalSpent).toLocaleString()} ر.س</span>
+                </div>
+              </div>
+              
               <div>
-                <p className="text-sm text-slate-600">محتوى منشور</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{publishedContent.length}</p>
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-slate-600">نسبة الاستخدام</span>
+                  <span className="font-semibold">{budgetUtilization}%</span>
+                </div>
+                <div className="w-full bg-slate-200 rounded-full h-3">
+                  <div 
+                    className={`h-3 rounded-full transition-all ${
+                      parseFloat(budgetUtilization) > 90 ? 'bg-red-500' :
+                      parseFloat(budgetUtilization) > 70 ? 'bg-amber-500' :
+                      'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(parseFloat(budgetUtilization), 100)}%` }}
+                  />
+                </div>
               </div>
-              <div className="p-3 rounded-lg bg-purple-100">
-                <TrendingUp className="w-6 h-6 text-purple-600" />
+
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">حملات نشطة</span>
+                  <Badge className="bg-blue-100 text-blue-700">{activeCampaigns.length}</Badge>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                أداء الحملات
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-slate-600 mb-1">إجمالي الوصول</p>
+                  <p className="text-xl font-bold text-blue-600">{totalCampaignReach.toLocaleString()}</p>
+                </div>
+                <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                  <p className="text-xs text-slate-600 mb-1">التفاعل</p>
+                  <p className="text-xl font-bold text-emerald-600">{totalCampaignEngagement.toLocaleString()}</p>
+                </div>
+                <div className="text-center p-3 bg-amber-50 rounded-lg">
+                  <p className="text-xs text-slate-600 mb-1">التحويلات</p>
+                  <p className="text-xl font-bold text-amber-600">{totalCampaignConversions}</p>
+                </div>
+                <div className="text-center p-3 bg-purple-50 rounded-lg">
+                  <p className="text-xs text-slate-600 mb-1">منصات متصلة</p>
+                  <p className="text-xl font-bold text-purple-600">{platforms.length}</p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <p className="text-xs text-slate-600 mb-2">أفضل 3 منصات بالأداء</p>
+                <div className="space-y-2">
+                  {platformPerformance.slice(0, 3).map((platform, idx) => (
+                    <div key={platform.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 text-white text-xs flex items-center justify-center font-bold">
+                          {idx + 1}
+                        </div>
+                        <span className="text-slate-700">{platform.name}</span>
+                      </div>
+                      <span className="font-semibold text-emerald-600">{platform.engagement}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <Tabs defaultValue="campaigns" className="space-y-6">
