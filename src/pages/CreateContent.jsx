@@ -18,7 +18,9 @@ import {
   FileText,
   Brain,
   Eye,
-  Lightbulb
+  Lightbulb,
+  Image as ImageIcon,
+  Target
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from 'sonner';
@@ -36,6 +38,8 @@ export default function CreateContent() {
   const [editedText, setEditedText] = useState('');
   const [seoSuggestions, setSeoSuggestions] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [contentIdeas, setContentIdeas] = useState([]);
 
   const queryClient = useQueryClient();
 
@@ -74,6 +78,17 @@ export default function CreateContent() {
         is_active: true 
       });
       return examples.slice(0, 3);
+    },
+  });
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['activeCampaignsForIdeas'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      return await base44.entities.Campaign.filter({ 
+        created_by: user.email,
+        status: 'active'
+      });
     },
   });
 
@@ -165,33 +180,45 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
   const generateSEOMutation = useMutation({
     mutationFn: async (content) => {
       const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `أنت خبير SEO متخصص في السوق السعودي. حلل المحتوى التالي واقترح تحسينات:
+        prompt: `أنت خبير SEO متخصص في السوق السعودي. حلل المحتوى التالي واقترح تحسينات استراتيجية:
 
 العنوان: ${editedTitle}
 المحتوى: ${content}
 
-قدم اقتراحات لتحسين SEO تشمل:
-1. كلمات مفتاحية إضافية مناسبة للسعودية
-2. نصائح لتحسين العنوان
-3. اقتراحات لتحسين المحتوى
-4. هاشتاقات مقترحة
+قدم اقتراحات متقدمة لتحسين SEO تشمل:
+1. كلمات مفتاحية استراتيجية عالية القيمة للسوق السعودي
+2. تحليل كلمات المنافسين المحتملة
+3. كلمات مفتاحية طويلة (Long-tail keywords)
+4. نصائح لتحسين العنوان مع تحليل المنافسة
+5. اقتراحات محددة لتحسين المحتوى
+6. هاشتاقات عالية الأداء
+7. توصيات لزيادة معدل التفاعل
 
 أرجع JSON:
 {
-  "recommended_keywords": ["كلمة1", "كلمة2"],
+  "recommended_keywords": ["كلمة1", "كلمة2", "كلمة3"],
+  "competitor_keywords": ["كلمة منافس 1", "كلمة منافس 2"],
+  "longtail_keywords": ["كلمة طويلة 1", "كلمة طويلة 2"],
   "title_suggestions": ["عنوان محسن 1", "عنوان محسن 2"],
-  "content_improvements": ["اقتراح 1", "اقتراح 2"],
-  "hashtags": ["#هاش1", "#هاش2"],
-  "seo_score": 75
+  "content_improvements": ["اقتراح 1", "اقتراح 2", "اقتراح 3"],
+  "hashtags": ["#هاش1", "#هاش2", "#هاش3"],
+  "engagement_tips": ["نصيحة 1", "نصيحة 2"],
+  "seo_score": 75,
+  "competitor_analysis": "تحليل موجز للمنافسة"
 }`,
+        add_context_from_internet: true,
         response_json_schema: {
           type: "object",
           properties: {
             recommended_keywords: { type: "array", items: { type: "string" } },
+            competitor_keywords: { type: "array", items: { type: "string" } },
+            longtail_keywords: { type: "array", items: { type: "string" } },
             title_suggestions: { type: "array", items: { type: "string" } },
             content_improvements: { type: "array", items: { type: "string" } },
             hashtags: { type: "array", items: { type: "string" } },
-            seo_score: { type: "number" }
+            engagement_tips: { type: "array", items: { type: "string" } },
+            seo_score: { type: "number" },
+            competitor_analysis: { type: "string" }
           }
         }
       });
@@ -199,7 +226,83 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
     },
     onSuccess: (data) => {
       setSeoSuggestions(data);
-      toast.success('تم توليد اقتراحات SEO');
+      toast.success('تم توليد اقتراحات SEO المتقدمة');
+    }
+  });
+
+  const generateImageMutation = useMutation({
+    mutationFn: async (description) => {
+      const result = await base44.integrations.Core.GenerateImage({
+        prompt: `صورة إعلانية احترافية عالية الجودة: ${description}. التصميم يجب أن يكون جذاب، عصري، مناسب للسوق السعودي، مع ألوان جذابة وتكوين متوازن.`
+      });
+      return result;
+    },
+    onSuccess: (data) => {
+      setGeneratedImage(data.url);
+      toast.success('تم توليد الصورة بنجاح!');
+    },
+    onError: () => {
+      toast.error('فشل في توليد الصورة');
+    }
+  });
+
+  const generateIdeasMutation = useMutation({
+    mutationFn: async () => {
+      const campaignContext = campaigns.length > 0 
+        ? `\n\nالحملات النشطة:\n${campaigns.map(c => `- ${c.campaign_name}: الهدف ${c.campaign_goal}, الجمهور المستهدف: ${JSON.stringify(c.target_audience || {})}`).join('\n')}`
+        : '';
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `أنت خبير تسويق محتوى متخصص في السوق السعودي. ولّد أفكار محتوى إبداعية بناءً على:
+
+1. الترندات الحالية في السعودية (استخدم بحث الإنترنت)
+2. اهتمامات الجمهور في السوق السعودي${campaignContext}
+
+المطلوب: ولّد 5 أفكار محتوى متنوعة ومبتكرة، كل فكرة يجب أن تكون:
+- مرتبطة بترند حالي
+- جذابة للجمهور السعودي
+- قابلة للتنفيذ فوراً
+- متنوعة (عروض، نصائح، قصص، تعليمية، ترفيهية)
+
+أرجع JSON:
+{
+  "ideas": [
+    {
+      "title": "عنوان الفكرة",
+      "description": "وصف موجز",
+      "trend_connection": "الترند المرتبط",
+      "target_audience": "الجمهور المستهدف",
+      "suggested_platforms": ["instagram", "tiktok"]
+    }
+  ],
+  "current_trends": ["ترند1", "ترند2", "ترند3"]
+}`,
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            ideas: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  trend_connection: { type: "string" },
+                  target_audience: { type: "string" },
+                  suggested_platforms: { type: "array", items: { type: "string" } }
+                }
+              }
+            },
+            current_trends: { type: "array", items: { type: "string" } }
+          }
+        }
+      });
+      return result;
+    },
+    onSuccess: (data) => {
+      setContentIdeas(data.ideas || []);
+      toast.success(`تم توليد ${data.ideas?.length || 0} أفكار محتوى!`);
     }
   });
 
@@ -290,6 +393,84 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
         <h1 className="text-3xl font-bold text-slate-900 mb-2">إنشاء محتوى جديد</h1>
         <p className="text-slate-600">ولّد محتوى إعلاني قوي باستخدام الذكاء الاصطناعي</p>
       </div>
+
+      {/* AI Content Ideas */}
+      <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-emerald-50">
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <CardTitle className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-blue-600" />
+              أفكار محتوى ذكية
+            </CardTitle>
+            <Button
+              onClick={() => generateIdeasMutation.mutate()}
+              disabled={generateIdeasMutation.isPending}
+              variant="outline"
+              size="sm"
+            >
+              {generateIdeasMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  جاري التوليد...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 ml-2" />
+                  ولّد أفكار جديدة
+                </>
+              )}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {contentIdeas.length === 0 ? (
+            <div className="text-center py-8">
+              <Lightbulb className="w-12 h-12 text-blue-300 mx-auto mb-3" />
+              <p className="text-slate-600 mb-4">احصل على أفكار محتوى مبتكرة بناءً على الترندات الحالية</p>
+              <Button
+                onClick={() => generateIdeasMutation.mutate()}
+                disabled={generateIdeasMutation.isPending}
+                size="sm"
+              >
+                <Sparkles className="w-4 h-4 ml-2" />
+                ابدأ التوليد
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {contentIdeas.map((idea, idx) => (
+                <div 
+                  key={idx}
+                  className="p-4 rounded-lg bg-white border hover:border-blue-400 hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => {
+                    setIdeaInput(idea.description);
+                    setActiveTab('idea');
+                    toast.success('تم نسخ الفكرة');
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h4 className="font-semibold text-slate-900">{idea.title}</h4>
+                    <Target className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  </div>
+                  <p className="text-sm text-slate-600 mb-3">{idea.description}</p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <Badge variant="secondary">
+                      <TrendingUp className="w-3 h-3 ml-1" />
+                      {idea.trend_connection}
+                    </Badge>
+                    <Badge variant="outline">{idea.target_audience}</Badge>
+                    {idea.suggested_platforms?.map((platform, i) => (
+                      <Badge key={i} className="bg-blue-100 text-blue-700">
+                        {platform}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Input Section */}
       <Card>
@@ -471,7 +652,20 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
                   ) : (
                     <Lightbulb className="w-4 h-4 ml-2" />
                   )}
-                  اقتراحات SEO
+                  تحليل SEO
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateImageMutation.mutate(editedTitle + ' - ' + editedText.substring(0, 100))}
+                  disabled={generateImageMutation.isPending}
+                >
+                  {generateImageMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 ml-2 animate-spin" />
+                  ) : (
+                    <ImageIcon className="w-4 h-4 ml-2" />
+                  )}
+                  ولّد صورة
                 </Button>
                 <Button
                   variant="outline"
@@ -515,6 +709,26 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
               </>
             )}
 
+            {/* Generated Image */}
+            {generatedImage && (
+              <Card className="bg-purple-50 border-purple-200">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ImageIcon className="w-5 h-5 text-purple-600" />
+                    الصورة المولدة بواسطة AI
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <img 
+                    src={generatedImage} 
+                    alt="Generated content" 
+                    className="w-full rounded-lg shadow-lg"
+                  />
+                  <p className="text-xs text-slate-500 mt-2">يمكنك حفظ الصورة واستخدامها مع المحتوى</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* SEO Suggestions */}
             {seoSuggestions && (
               <Card className="bg-amber-50 border-amber-200">
@@ -530,12 +744,46 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {seoSuggestions.competitor_analysis && (
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm font-medium text-blue-900 mb-1">تحليل المنافسة:</p>
+                      <p className="text-sm text-blue-700">{seoSuggestions.competitor_analysis}</p>
+                    </div>
+                  )}
+
                   {seoSuggestions.recommended_keywords?.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-slate-700 mb-2">كلمات مفتاحية مقترحة:</p>
+                      <p className="text-sm font-medium text-slate-700 mb-2">كلمات مفتاحية استراتيجية:</p>
                       <div className="flex flex-wrap gap-2">
                         {seoSuggestions.recommended_keywords.map((kw, idx) => (
                           <Badge key={idx} variant="secondary" className="cursor-pointer hover:bg-slate-200">
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {seoSuggestions.competitor_keywords?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">كلمات المنافسين:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {seoSuggestions.competitor_keywords.map((kw, idx) => (
+                          <Badge key={idx} className="bg-orange-100 text-orange-700">
+                            <Target className="w-3 h-3 ml-1" />
+                            {kw}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {seoSuggestions.longtail_keywords?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">كلمات مفتاحية طويلة:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {seoSuggestions.longtail_keywords.map((kw, idx) => (
+                          <Badge key={idx} className="bg-green-100 text-green-700">
                             {kw}
                           </Badge>
                         ))}
@@ -584,6 +832,20 @@ ${preferences.successful_keywords?.length > 0 ? `- كلمات مفتاحية ن�
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {seoSuggestions.engagement_tips?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">نصائح لزيادة التفاعل:</p>
+                      <ul className="space-y-1 text-sm text-slate-600">
+                        {seoSuggestions.engagement_tips.map((tip, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-emerald-600">✓</span>
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </CardContent>
