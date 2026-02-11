@@ -1,0 +1,367 @@
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Sparkles, 
+  Link as LinkIcon, 
+  Loader2,
+  CheckCircle,
+  TrendingUp,
+  Edit3,
+  Send
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+export default function CreateContent() {
+  const [activeTab, setActiveTab] = useState('idea');
+  const [ideaInput, setIdeaInput] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [generatedContent, setGeneratedContent] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
+  const [editedText, setEditedText] = useState('');
+
+  const queryClient = useQueryClient();
+
+  const { data: subscription } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: async () => {
+      const user = await base44.auth.me();
+      const subs = await base44.entities.Subscription.filter({ user_email: user.email });
+      return subs[0] || null;
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: async ({ type, input }) => {
+      const prompt = type === 'idea' 
+        ? `أنت خبير تسويق سعودي متخصص في كتابة محتوى إعلاني قوي باللهجة السعودية. 
+
+المطلوب: اكتب محتوى إعلاني احترافي جذاب بناءً على الفكرة التالية: "${input}"
+
+المتطلبات:
+1. استخدم اللهجة السعودية الطبيعية (مثل: وايد، كثير، زين، ممتاز، روعة، خيال)
+2. اكتب بأسلوب مقنع وجذاب يحفز على الشراء أو التفاعل
+3. ضمّن كلمات مفتاحية قوية لتحسين SEO في السعودية
+4. اجعل المحتوى قصير ومركز (150-200 كلمة)
+5. استخدم الترند الحالي في السعودية
+6. اضف دعوة واضحة للإجراء (call to action)
+
+أرجع النتيجة بتنسيق JSON:
+{
+  "title": "عنوان جذاب",
+  "content": "نص المحتوى الإعلاني",
+  "seo_keywords": "كلمة1, كلمة2, كلمة3",
+  "trend_tags": ["ترند1", "ترند2"]
+}`
+        : `أنت خبير تسويق سعودي متخصص في كتابة محتوى إعلاني للمنتجات باللهجة السعودية.
+
+المطلوب: حلل هذا الرابط واكتب محتوى إعلاني احترافي له: ${input}
+
+المتطلبات:
+1. استخرج معلومات المنتج من الرابط
+2. استخدم اللهجة السعودية الطبيعية (مثل: وايد، كثير، زين، ممتاز، روعة)
+3. اكتب بأسلوب مقنع يبرز فوائد المنتج
+4. ضمّن كلمات مفتاحية قوية لتحسين SEO
+5. اجعل المحتوى قصير ومركز (150-200 كلمة)
+6. استخدم زوايا تسويقية مبتكرة
+7. اضف دعوة واضحة للإجراء
+
+أرجع النتيجة بتنسيق JSON:
+{
+  "title": "عنوان جذاب",
+  "content": "نص المحتوى الإعلاني",
+  "seo_keywords": "كلمة1, كلمة2, كلمة3",
+  "trend_tags": ["ترند1", "ترند2"]
+}`;
+
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt,
+        add_context_from_internet: type === 'url',
+        response_json_schema: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            content: { type: "string" },
+            seo_keywords: { type: "string" },
+            trend_tags: { type: "array", items: { type: "string" } }
+          }
+        }
+      });
+
+      return result;
+    },
+    onSuccess: (data) => {
+      setGeneratedContent(data);
+      setEditedTitle(data.title);
+      setEditedText(data.content);
+      toast.success('تم توليد المحتوى بنجاح!');
+    },
+    onError: () => {
+      toast.error('حدث خطأ في توليد المحتوى');
+    }
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (status) => {
+      const user = await base44.auth.me();
+      
+      await base44.entities.Content.create({
+        title: editedTitle,
+        content_text: editedText,
+        content_type: activeTab === 'idea' ? 'idea' : 'product_url',
+        source_input: activeTab === 'idea' ? ideaInput : urlInput,
+        seo_keywords: generatedContent.seo_keywords,
+        trend_tags: generatedContent.trend_tags || [],
+        status: status,
+        target_platforms: []
+      });
+
+      // Update subscription usage
+      if (subscription && subscription.content_quota > 0) {
+        await base44.entities.Subscription.update(subscription.id, {
+          content_used: (subscription.content_used || 0) + 1
+        });
+      }
+    },
+    onSuccess: (_, status) => {
+      queryClient.invalidateQueries(['subscription']);
+      queryClient.invalidateQueries(['recentContent']);
+      toast.success(status === 'draft' ? 'تم حفظ المسودة' : 'تم اعتماد المحتوى');
+      
+      // Reset form
+      setGeneratedContent(null);
+      setIdeaInput('');
+      setUrlInput('');
+      setIsEditing(false);
+    }
+  });
+
+  const handleGenerate = () => {
+    const input = activeTab === 'idea' ? ideaInput : urlInput;
+    if (!input.trim()) {
+      toast.error('الرجاء إدخال ' + (activeTab === 'idea' ? 'فكرة' : 'رابط'));
+      return;
+    }
+
+    // Check quota
+    if (subscription && subscription.content_quota > 0) {
+      if (subscription.content_used >= subscription.content_quota) {
+        toast.error('لقد استنفدت حصتك الشهرية من المحتوى');
+        return;
+      }
+    }
+
+    generateMutation.mutate({ type: activeTab, input });
+  };
+
+  const canUseTrends = subscription && (subscription.has_trend_analysis || subscription.plan_type === 'premium');
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 mb-2">إنشاء محتوى جديد</h1>
+        <p className="text-slate-600">ولّد محتوى إعلاني قوي باستخدام الذكاء الاصطناعي</p>
+      </div>
+
+      {/* Input Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>ما الذي تريد إنشاء محتوى عنه؟</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="idea" className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                من فكرة
+              </TabsTrigger>
+              <TabsTrigger value="url" className="gap-2">
+                <LinkIcon className="w-4 h-4" />
+                من رابط منتج
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="idea" className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  اكتب فكرتك أو موضوعك
+                </label>
+                <Textarea
+                  placeholder="مثال: عرض خاص على منتجات العناية بالبشرة للصيف"
+                  value={ideaInput}
+                  onChange={(e) => setIdeaInput(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+
+              {canUseTrends && (
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="flex items-start gap-3">
+                    <TrendingUp className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">اقتراحات الترند</p>
+                      <p className="text-xs text-blue-700 mt-1">سيتم دمج الترندات الحالية في السعودية تلقائياً</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending || !ideaInput.trim()}
+                className="w-full"
+                size="lg"
+              >
+                {generateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    جاري التوليد...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 ml-2" />
+                    ولّد محتوى ذكي
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="url" className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  الصق رابط المنتج أو المتجر
+                </label>
+                <Input
+                  placeholder="https://example.com/product"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  type="url"
+                />
+              </div>
+
+              <Button 
+                onClick={handleGenerate}
+                disabled={generateMutation.isPending || !urlInput.trim()}
+                className="w-full"
+                size="lg"
+              >
+                {generateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                    جاري التحليل والتوليد...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 ml-2" />
+                    حلل وولّد محتوى
+                  </>
+                )}
+              </Button>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Generated Content */}
+      {generatedContent && (
+        <Card className="border-2 border-emerald-500">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-emerald-600" />
+                المحتوى المولد
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(!isEditing)}
+              >
+                <Edit3 className="w-4 h-4 ml-2" />
+                {isEditing ? 'إلغاء التعديل' : 'تعديل'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isEditing ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">العنوان</label>
+                  <Input
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">المحتوى</label>
+                  <Textarea
+                    value={editedText}
+                    onChange={(e) => setEditedText(e.target.value)}
+                    rows={8}
+                    className="resize-none"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">{editedTitle}</h3>
+                  <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{editedText}</p>
+                </div>
+              </>
+            )}
+
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-2">الكلمات المفتاحية (SEO):</p>
+              <div className="flex flex-wrap gap-2">
+                {generatedContent.seo_keywords?.split(',').map((keyword, idx) => (
+                  <Badge key={idx} variant="secondary">{keyword.trim()}</Badge>
+                ))}
+              </div>
+            </div>
+
+            {generatedContent.trend_tags && generatedContent.trend_tags.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 mb-2">تاجات الترند:</p>
+                <div className="flex flex-wrap gap-2">
+                  {generatedContent.trend_tags.map((tag, idx) => (
+                    <Badge key={idx} className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                      <TrendingUp className="w-3 h-3 ml-1" />
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                onClick={() => saveMutation.mutate('draft')}
+                variant="outline"
+                disabled={saveMutation.isPending}
+                className="flex-1"
+              >
+                حفظ كمسودة
+              </Button>
+              <Button
+                onClick={() => saveMutation.mutate('approved')}
+                disabled={saveMutation.isPending}
+                className="flex-1"
+              >
+                <Send className="w-4 h-4 ml-2" />
+                اعتماد المحتوى
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
