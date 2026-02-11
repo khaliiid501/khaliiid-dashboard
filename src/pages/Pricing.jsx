@@ -196,7 +196,7 @@ export default function Pricing() {
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-slate-900">{plan.price}</span>
-                  <span className="text-slate-600 mr-2">ر.س</span>
+                  <span className="text-slate-600 mr-2">SAR</span>
                   <p className="text-sm text-slate-600 mt-1">{plan.period}</p>
                 </div>
               </CardHeader>

@@ -49,32 +49,32 @@
  */
 import AITraining from './pages/AITraining';
 import Analytics from './pages/Analytics';
+import Automation from './pages/Automation';
+import Campaigns from './pages/Campaigns';
 import ContentLibrary from './pages/ContentLibrary';
 import CreateContent from './pages/CreateContent';
 import Home from './pages/Home';
 import Pricing from './pages/Pricing';
+import Schedule from './pages/Schedule';
 import Settings from './pages/Settings';
 import Templates from './pages/Templates';
 import Trends from './pages/Trends';
-import Campaigns from './pages/Campaigns';
-import Schedule from './pages/Schedule';
-import Automation from './pages/Automation';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "AITraining": AITraining,
     "Analytics": Analytics,
+    "Automation": Automation,
+    "Campaigns": Campaigns,
     "ContentLibrary": ContentLibrary,
     "CreateContent": CreateContent,
     "Home": Home,
     "Pricing": Pricing,
+    "Schedule": Schedule,
     "Settings": Settings,
     "Templates": Templates,
     "Trends": Trends,
-    "Campaigns": Campaigns,
-    "Schedule": Schedule,
-    "Automation": Automation,
 }
 
 export const pagesConfig = {
