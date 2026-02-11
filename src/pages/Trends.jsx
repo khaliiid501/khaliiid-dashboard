@@ -132,13 +132,21 @@ export default function Trends() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">الترندات والتوجهات</h1>
-        <p className="text-slate-600">اكتشف أحدث الترندات في السوق السعودي والخليجي</p>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink-600 via-purple-600 to-blue-600 p-10 shadow-2xl mb-8">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjA1IiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-30" />
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <TrendingUp className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-1">الترندات والتوجهات</h1>
+            <p className="text-white/90 text-lg">اكتشف أحدث الترندات واستغلها في حملاتك</p>
+          </div>
+        </div>
       </div>
 
       {/* Region Selector */}
-      <Card>
+      <Card className="glass-card border-slate-200/50 hover-lift">
         <CardContent className="p-6">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div>

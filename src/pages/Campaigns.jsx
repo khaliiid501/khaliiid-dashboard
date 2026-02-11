@@ -392,8 +392,8 @@ ${report.campaigns.map((c, i) => `${i + 1}. ${c.name}
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">إدارة الحملات</h1>
-          <p className="text-slate-600">أنشئ وأدر حملاتك التسويقية</p>
+          <h1 className="text-4xl font-bold gradient-text mb-2">إدارة الحملات</h1>
+          <p className="text-slate-600 text-lg">أنشئ وأدر حملاتك التسويقية باحترافية</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button onClick={() => setIsColumnsDialogOpen(true)} variant="outline">
@@ -792,50 +792,60 @@ ${report.campaigns.map((c, i) => `${i + 1}. ${c.name}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="glass-card border-l-4 border-l-blue-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">إجمالي الحملات</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{campaigns.length}</p>
+                <p className="text-sm font-medium text-slate-600">إجمالي الحملات</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">{campaigns.length}</p>
               </div>
-              <Megaphone className="w-8 h-8 text-blue-600" />
+              <div className="p-4 rounded-2xl bg-blue-100">
+                <Megaphone className="w-7 h-7 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card border-l-4 border-l-emerald-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">حملات نشطة</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{activeCampaigns.length}</p>
+                <p className="text-sm font-medium text-slate-600">حملات نشطة</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">{activeCampaigns.length}</p>
               </div>
-              <Play className="w-8 h-8 text-green-600" />
+              <div className="p-4 rounded-2xl bg-emerald-100">
+                <Play className="w-7 h-7 text-emerald-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card border-l-4 border-l-amber-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">إجمالي الميزانية</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{totalBudget.toLocaleString()} ر.س</p>
+                <p className="text-sm font-medium text-slate-600">إجمالي الميزانية</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">{totalBudget.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">ر.س</p>
               </div>
-              <DollarSign className="w-8 h-8 text-amber-600" />
+              <div className="p-4 rounded-2xl bg-amber-100">
+                <DollarSign className="w-7 h-7 text-amber-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card border-l-4 border-l-purple-500 hover-lift">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600">المصروف</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{totalSpent.toLocaleString()} ر.س</p>
+                <p className="text-sm font-medium text-slate-600">المصروف</p>
+                <p className="text-3xl font-bold text-slate-900 mt-1 font-mono">{totalSpent.toLocaleString()}</p>
+                <p className="text-xs text-slate-500 mt-1">ر.س</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-purple-600" />
+              <div className="p-4 rounded-2xl bg-purple-100">
+                <TrendingUp className="w-7 h-7 text-purple-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -861,7 +871,8 @@ ${report.campaigns.map((c, i) => `${i + 1}. ${c.name}
             const budgetProgress = campaign.budget > 0 ? (campaign.spent_budget / campaign.budget) * 100 : 0;
             
             return (
-              <Card key={campaign.id} className="hover:shadow-md transition-all">
+              <Card key={campaign.id} className="glass-card hover-lift border-slate-200/50 overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-l from-blue-500 to-emerald-500" />
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">

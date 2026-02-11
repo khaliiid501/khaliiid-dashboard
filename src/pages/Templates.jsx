@@ -153,8 +153,8 @@ export default function Templates() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">قوالب المحتوى</h1>
-          <p className="text-slate-600">أنشئ وأدر قوالبك الجاهزة لتسريع إنشاء المحتوى</p>
+          <h1 className="text-4xl font-bold gradient-text mb-2">قوالب المحتوى</h1>
+          <p className="text-slate-600 text-lg">أنشئ وأدر قوالبك الجاهزة لتسريع إنشاء المحتوى</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -246,7 +246,7 @@ export default function Templates() {
       </div>
 
       {/* Filters */}
-      <Card>
+      <Card className="glass-card border-slate-200/50">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
@@ -297,7 +297,7 @@ export default function Templates() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-lg transition-all">
+            <Card key={template.id} className="glass-card hover-lift border-slate-200/50">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">

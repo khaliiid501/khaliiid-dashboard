@@ -27,10 +27,12 @@ import {
   FileDown,
   Activity,
   BarChart3,
-  Percent
+  Percent,
+  Sparkles
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { toast } from 'sonner';
+import StatCard from '@/components/ui/stat-card';
 
 const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -470,70 +472,41 @@ export default function Analytics() {
         
         {/* Primary KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600">إجمالي المشاهدات</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{totalViews.toLocaleString()}</p>
-                  <p className="text-xs text-slate-500 mt-1">من {publishedContent.length} محتوى منشور</p>
-                </div>
-                <div className="p-3 rounded-lg bg-blue-100">
-                  <Eye className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600">معدل التفاعل</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{engagementRate}%</p>
-                  <p className="text-xs text-slate-500 mt-1">من إجمالي {totalCampaignReach.toLocaleString()} وصول</p>
-                </div>
-                <div className="p-3 rounded-lg bg-emerald-100">
-                  <Activity className="w-6 h-6 text-emerald-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-amber-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600">معدل التحويل</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{conversionRate}%</p>
-                  <p className="text-xs text-slate-500 mt-1">{totalCampaignConversions} تحويلات</p>
-                </div>
-                <div className="p-3 rounded-lg bg-amber-100">
-                  <Percent className="w-6 h-6 text-amber-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-purple-500">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600">متوسط ROI</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{avgCampaignROI}%</p>
-                  <p className="text-xs text-slate-500 mt-1">لـ {campaigns.length} حملات</p>
-                </div>
-                <div className="p-3 rounded-lg bg-purple-100">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard
+            title="إجمالي المشاهدات"
+            value={totalViews.toLocaleString()}
+            icon={Eye}
+            accentColor="blue"
+            trend="up"
+            trendValue={`من ${publishedContent.length} محتوى`}
+          />
+          <StatCard
+            title="معدل التفاعل"
+            value={`${engagementRate}%`}
+            icon={Activity}
+            accentColor="emerald"
+            trend="up"
+            trendValue={`${totalCampaignReach.toLocaleString()} وصول`}
+          />
+          <StatCard
+            title="معدل التحويل"
+            value={`${conversionRate}%`}
+            icon={Percent}
+            accentColor="amber"
+            trendValue={`${totalCampaignConversions} تحويلات`}
+          />
+          <StatCard
+            title="متوسط ROI"
+            value={`${avgCampaignROI}%`}
+            icon={TrendingUp}
+            accentColor="purple"
+            trendValue={`${campaigns.length} حملات`}
+          />
         </div>
 
         {/* Campaign & Budget Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card>
+          <Card className="glass-card hover-lift border-slate-200/50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
