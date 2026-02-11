@@ -34,6 +34,7 @@ const platformIcons = {
   youtube: Youtube,
   snapchat: MessageCircle,
   tiktok: MessageCircle,
+  pinterest: MessageCircle,
   telegram: MessageCircle,
   whatsapp_business: MessageCircle,
   threads: MessageCircle,
@@ -53,6 +54,7 @@ const platformLabels = {
   twitter: 'تويتر (X)',
   snapchat: 'سناب شات',
   tiktok: 'تيك توك',
+  pinterest: 'بينتريست',
   facebook: 'فيسبوك',
   linkedin: 'لينكد إن',
   telegram: 'تيليجرام',
@@ -177,7 +179,7 @@ export default function Settings() {
   };
 
   const getPlatformType = (platformName) => {
-    const socialMedia = ['instagram', 'twitter', 'snapchat', 'tiktok', 'facebook', 'linkedin', 'youtube', 'threads'];
+    const socialMedia = ['instagram', 'twitter', 'snapchat', 'tiktok', 'pinterest', 'facebook', 'linkedin', 'youtube', 'threads'];
     const messaging = ['telegram', 'whatsapp_business'];
     const stores = ['salla', 'zid', 'woocommerce', 'shopify', 'ExpandCart', 'noon', 'amazon_sa', 'jarir', 'extra'];
     
@@ -196,7 +198,7 @@ export default function Settings() {
   };
 
   const socialMediaPlatforms = connectedPlatforms.filter(p => 
-    ['instagram', 'twitter', 'snapchat', 'tiktok', 'facebook', 'linkedin', 'youtube', 'threads'].includes(p.platform_name)
+    ['instagram', 'twitter', 'snapchat', 'tiktok', 'pinterest', 'facebook', 'linkedin', 'youtube', 'threads'].includes(p.platform_name)
   );
   
   const messagingPlatforms = connectedPlatforms.filter(p => 
@@ -347,7 +349,7 @@ export default function Settings() {
                     <SelectContent>
                       <div className="p-2">
                         <p className="text-xs font-semibold text-slate-500 mb-2">سوشيال ميديا</p>
-                        {['instagram', 'twitter', 'snapchat', 'tiktok', 'facebook', 'linkedin', 'youtube', 'threads'].map((platform) => (
+                        {['instagram', 'twitter', 'snapchat', 'tiktok', 'pinterest', 'facebook', 'linkedin', 'youtube', 'threads'].map((platform) => (
                           <SelectItem key={platform} value={platform}>
                             <div className="flex items-center gap-2">
                               {React.createElement(platformIcons[platform], { className: "w-4 h-4" })}
